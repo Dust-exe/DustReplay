@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/dustreplay"
+Homepage = "https://github.com/dust-exe/dustreplay"
 
 [build-system]
 requires = ["setuptools>=61"]
