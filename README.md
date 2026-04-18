@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # DustReplay
 
 **DustReplay** is a Windows desktop app that keeps a **rolling screen buffer** (like an instant replay). When something worth keeping happens, press a **global hotkey** to write the last *N* minutes to an MP4 in your output folder.
@@ -68,3 +69,6 @@ The script installs dependencies, runs PyInstaller, and copies `DustReplay.exe` 
 ## Disclaimer
 
 This tool records the screen and audio. Only use it where you have permission to record. Not affiliated with NVIDIA, Microsoft, or ffmpeg upstream projects.
+=======
+# dustreplay
+>>>>>>> c9c9d5b2f334be9ed4b335e9946baf422212d2c2
