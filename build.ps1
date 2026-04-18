@@ -1,15 +1,22 @@
-#Requires -RunAsAdministrator
 # Build DustReplay.exe from the dustreplay/ source tree (PyInstaller one-file).
+# Does NOT run git pull - run: git pull first for latest code.
+# Run in PowerShell:  cd ...\dasasd ; .\build.ps1
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
+
+$script:isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+if (-not $script:isAdmin) {
+    Write-Host "  (Not Administrator: build usually works. If errors appear, try Run as administrator.)" -ForegroundColor DarkYellow
+    Write-Host ""
+}
 $pkg = Join-Path $root 'dustreplay'
 $distDir = Join-Path $root 'dist'
 $workDir = Join-Path $root 'build\pyinstaller_work'
 $specDir = Join-Path $root 'build'
 
 Write-Host ""
-Write-Host "  DustReplay build — PyInstaller" -ForegroundColor Magenta
+Write-Host "  DustReplay build - PyInstaller" -ForegroundColor Magenta
 Write-Host "  Source: $pkg" -ForegroundColor DarkGray
 Write-Host ""
 
@@ -56,11 +63,20 @@ try {
 
     Write-Host "  [4/4] Copy to Desktop..." -ForegroundColor Cyan
     $desk = [Environment]::GetFolderPath('Desktop')
-    Copy-Item $exe (Join-Path $desk 'DustReplay.exe') -Force
+    $deskExe = Join-Path $desk 'DustReplay.exe'
+    try {
+        Copy-Item $exe $deskExe -Force -ErrorAction Stop
+        $copied = $true
+    }
+    catch {
+        $copied = $false
+        Write-Host ""
+        Write-Warning "Could not copy to Desktop (close DustReplay.exe if it is running, then copy manually from dist)."
+    }
 
     Write-Host ""
     Write-Host "  Done: $exe" -ForegroundColor Green
-    Write-Host "  Also copied to Desktop." -ForegroundColor Green
+    if ($copied) { Write-Host "  Also copied to Desktop." -ForegroundColor Green }
 }
 finally {
     Pop-Location
