@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+*.spec
+build/
+dist/
+*.egg-info/
+.venv/
+venv/
+.env
+*.log
+Thumbs.db
+Desktop.ini
+dustreplay/icon.ico
+**/ffmpeg_stderr.log

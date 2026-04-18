@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cmd.exe /c \"dir C:\\\\Users\\\\kaan3\\\\Desktop\\\\dasasd\\\\instant_replay\"\")",
+      "Bash(dir \"C:\\\\Users\\\\kaan3\\\\Desktop\\\\dasasd\")",
+      "Bash(dir \"C:\\\\Users\\\\kaan3\\\\Desktop\\\\dasasd\\\\instant_replay\")",
+      "Bash(copy \"C:\\\\Users\\\\kaan3\\\\Desktop\\\\dasasd\\\\instant_replay\\\\SETUP.exe.bat\" \"C:\\\\Users\\\\kaan3\\\\Desktop\\\\dasasd\\\\instant_replay\\\\SETUP.bat\")",
+      "Bash(del \"C:\\\\Users\\\\kaan3\\\\Desktop\\\\dasasd\\\\instant_replay\\\\SETUP.exe.bat\")",
+      "Bash(\"C:\\\\Users\\\\kaan3\\\\Desktop\\\\dasasd\\\\instant_replay\\\\SETUP.bat\":*)",
+      "Bash(powershell -NoProfile -Command \":*)",
+      "Bash(taskkill /F /IM ffmpeg.exe)",
+      "Bash(tasklist)",
+      "Bash(taskkill /F /PID 45068 /PID 47880 /PID 49396)",
+      "Bash(cmd /c \"taskkill /F /IM ffmpeg.exe\")",
+      "Bash(cmd /c \"taskkill /F /IM ffmpeg.exe 2>&1\")",
+      "Bash(powershell -Command \"Get-Process -Name ffmpeg -ErrorAction SilentlyContinue | Stop-Process -Force; Write-Host ''Done''\")",
+      "Bash(powershell -Command \"Remove-Item ''C:\\\\Users\\\\kaan3\\\\AppData\\\\Roaming\\\\DustReplay\\\\temp\\\\seg_20260401_063001.mp4'' -Force -ErrorAction SilentlyContinue; Remove-Item ''C:\\\\Users\\\\kaan3\\\\AppData\\\\Roaming\\\\DustReplay\\\\temp\\\\seg_20260401_063553.mp4'' -Force -ErrorAction SilentlyContinue; Write-Host ''Done''\")",
+      "Bash(powershell -Command \"Get-Process -Name DustReplay -ErrorAction SilentlyContinue | Select-Object Id, CPU, StartTime\")",
+      "Bash(powershell -Command \"Start-Process powershell -ArgumentList ''-NoProfile -ExecutionPolicy Bypass -File \"\"C:\\\\Users\\\\kaan3\\\\Desktop\\\\dasasd\\\\instant_replay\\\\rebuild.ps1\"\"'' -Verb RunAs\")",
+      "Bash(grep -a -v \"^$\")",
+      "Bash(FF=\"/c/Users/kaan3/AppData/Roaming/DustReplay/ffmpeg/ffmpeg.exe\" \"$FF\" -f ddagrab -framerate 60 -output_idx 0 -i \"desktop\" -t 2 -c:v h264_nvenc -f null -)",
+      "Bash(FF=\"/c/Users/kaan3/AppData/Roaming/DustReplay/ffmpeg/ffmpeg.exe\" \"$FF\" -f ddagrab -i \"desktop\" -t 2 -c:v h264_nvenc -f null -)",
+      "Bash(FF=\"/c/Users/kaan3/AppData/Roaming/DustReplay/ffmpeg/ffmpeg.exe\" \"$FF\" -f ddagrab -help)",
+      "Bash(FF=\"/c/Users/kaan3/AppData/Roaming/DustReplay/ffmpeg/ffmpeg.exe\" \"$FF\" -formats)",
+      "Bash(FF=\"/c/Users/kaan3/AppData/Roaming/DustReplay/ffmpeg/ffmpeg.exe\" \"$FF\" -f gdigrab -draw_mouse 1 -offset_x 0 -offset_y 0 -video_size 2560x1440 -framerate 60 -i desktop -t 3 -c:v h264_nvenc -preset p1 -cq 38 -pix_fmt yuv420p -f null -)",
+      "Bash(FF=\"/c/Users/kaan3/AppData/Roaming/DustReplay/ffmpeg/ffmpeg.exe\" \"$FF\" -f gdigrab -draw_mouse 1 -offset_x 0 -offset_y 0 -video_size 2560x1440 -framerate 30 -i desktop -t 3 -c:v h264_nvenc -preset p1 -cq 38 -pix_fmt yuv420p -f null -)",
+      "Bash(powershell -Command \"Get-Process -Name ffmpeg -ErrorAction SilentlyContinue | Stop-Process -Force; Get-Process -Name DustReplay -ErrorAction SilentlyContinue | Stop-Process -Force; Write-Host ''Durduruldu''\")",
+      "Bash(FF=\"/c/Users/kaan3/AppData/Roaming/DustReplay/ffmpeg/ffmpeg.exe\" \"$FF\" -y -f gdigrab -draw_mouse 1 -offset_x 0 -offset_y 0 -video_size 2560x1440 -framerate 60 -i desktop -f dshow -thread_queue_size 4096 -i \"audio=Voicemeeter Out B2 \\(VB-Audio Voicemeeter VAIO\\)\" -f dshow -thread_queue_size 4096 -i \"audio=Mikrofon \\(BlackShark V2 Pro PS 2.4\\)\" -filter_complex \"[0:v]fps=60[vout];[1:a][2:a]amix=inputs=2:duration=longest[aout]\" -map \"[vout]\" -map \"[aout]\" -c:v h264_nvenc -preset p1 -cq 38 -pix_fmt yuv420p -c:a aac -b:a 128k -t 5 /tmp/test_rec.mp4)",
+      "Bash(FF=\"/c/Users/kaan3/AppData/Roaming/DustReplay/ffmpeg/ffmpeg.exe\" \"$FF\" -i /tmp/test_rec.mp4)"
+    ]
+  }
+}

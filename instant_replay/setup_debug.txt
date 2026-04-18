@@ -1,0 +1,86 @@
+﻿
+[2026-03-31 04:33:23] === DustReplay Setup Started ===
+[2026-03-31 04:33:23] Build dir: C:\Users\kaan3\AppData\Local\Temp\DustReplay_build
+[2026-03-31 04:33:23] STEP: ADIM 1/4 - Python 3.12 kontrol ediliyor...
+[2026-03-31 04:33:23] WARN: Python 3.12 bulunamadi, winget ile yukleniyor...
+[2026-03-31 04:33:23] Installing Python 3.12 via winget...
+[2026-03-31 04:34:07] winget exit: 0
+[2026-03-31 04:34:16] OK: Yuklendi: Python 3.12.10
+[2026-03-31 04:34:16] STEP: ADIM 2/4 - Python kutuphaneleri yukleniyor (customtkinter, pystray, pillow, keyboard, pyinstaller)...
+[2026-03-31 04:34:40] pip exit: 0
+[2026-03-31 04:34:40] pip output (last 20):   Using cached setuptools-82.0.1-py3-none-any.whl.metadata (6.5 kB)
+Using cached customtkinter-5.2.2-py3-none-any.whl (296 kB)
+Using cached pystray-0.19.5-py2.py3-none-any.whl (49 kB)
+Downloading pillow-12.1.1-cp312-cp312-win_amd64.whl (7.0 MB)
+   ---------------------------------------- 7.0/7.0 MB 8.0 MB/s eta 0:00:00
+Using cached keyboard-0.13.5-py3-none-any.whl (58 kB)
+Using cached pyinstaller-6.19.0-py3-none-win_amd64.whl (1.4 MB)
+Using cached packaging-26.0-py3-none-any.whl (74 kB)
+Using cached pefile-2024.8.26-py3-none-any.whl (74 kB)
+Using cached pyinstaller_hooks_contrib-2026.3-py3-none-any.whl (454 kB)
+Using cached pywin32_ctypes-0.2.3-py3-none-any.whl (30 kB)
+Using cached setuptools-82.0.1-py3-none-any.whl (1.0 MB)
+Using cached altgraph-0.17.5-py2.py3-none-any.whl (21 kB)
+Using cached darkdetect-0.8.0-py3-none-any.whl (9.0 kB)
+Using cached six-1.17.0-py2.py3-none-any.whl (11 kB)
+Installing collected packages: keyboard, altgraph, six, setuptools, pywin32-ctypes, pillow, pefile, packaging, darkdetect, pystray, pyinstaller-hooks-contrib, customtkinter, pyinstaller
+Successfully installed altgraph-0.17.5 customtkinter-5.2.2 darkdetect-0.8.0 keyboard-0.13.5 packaging-26.0 pefile-2024.8.26 pillow-12.1.1 pyinstaller-6.19.0 pyinstaller-hooks-contrib-2026.3 pystray-0.19.5 pywin32-ctypes-0.2.3 setuptools-82.0.1 six-1.17.0
+py.exe : 
+At C:\Users\kaan3\Desktop\dasasd\instant_replay\setup.ps1:103 char:11
++ $pipOut = & py -3.12 -m pip install customtkinter pystray pillow keyb ...
++           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[notice] A new release of pip is available: 25.0.1 -> 26.0.1
+[notice] To update, run: python.exe -m pip install --upgrade pip
+
+[2026-03-31 04:34:40] OK: Tum kutuphaner kuruldu
+[2026-03-31 04:34:40] STEP: ADIM 3/4 - Kaynak dosyalar yaziliyor...
+[2026-03-31 04:34:40] All source files written.
+[2026-03-31 04:34:40] Icon gen:  (exit 0)
+[2026-03-31 04:34:40] OK: Kaynak dosyalar hazir
+[2026-03-31 04:34:40] STEP: ADIM 4/4 - DustReplay.exe derleniyor (5-10 dakika surebilir, bekleyin)...
+[2026-03-31 04:35:06] PyInstaller exit: 0
+[2026-03-31 04:35:06] PyInstaller output (last 30):
+17651 WARNING: Ignoring AppKit.framework/AppKit imported from C:\Users\kaan3\AppData\Local\Programs\Python\Python312\Li
+b\site-packages\darkdetect\_mac_detect.py - only basenames are supported with ctypes imports!
+17668 INFO: Analyzing run-time hooks ...
+17670 INFO: Including run-time hook 'pyi_rth_inspect.py' from 'C:\\Users\\kaan3\\AppData\\Local\\Programs\\Python\\Pyth
+on312\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+17673 INFO: Including run-time hook 'pyi_rth__tkinter.py' from 'C:\\Users\\kaan3\\AppData\\Local\\Programs\\Python\\Pyt
+hon312\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+17709 INFO: Creating base_library.zip...
+17730 INFO: Looking for dynamic libraries
+18092 INFO: Extra DLL search directories (AddDllDirectory): []
+18093 INFO: Extra DLL search directories (PATH): []
+18631 INFO: Warnings written to C:\Users\kaan3\AppData\Local\Temp\DustReplay_build\work\DustReplay\warn-DustReplay.txt
+18662 INFO: Graph cross-reference written to C:\Users\kaan3\AppData\Local\Temp\DustReplay_build\work\DustReplay\xref-Du
+stReplay.html
+18701 INFO: checking PYZ
+18701 INFO: Building PYZ because PYZ-00.toc is non existent
+18701 INFO: Building PYZ (ZlibArchive) C:\Users\kaan3\AppData\Local\Temp\DustReplay_build\work\DustReplay\PYZ-00.pyz
+19077 INFO: Building PYZ (ZlibArchive) C:\Users\kaan3\AppData\Local\Temp\DustReplay_build\work\DustReplay\PYZ-00.pyz co
+mpleted successfully.
+19123 INFO: checking PKG
+19123 INFO: Building PKG because PKG-00.toc is non existent
+19123 INFO: Building PKG (CArchive) DustReplay.pkg
+23329 INFO: Building PKG (CArchive) DustReplay.pkg completed successfully.
+23353 INFO: Bootloader C:\Users\kaan3\AppData\Local\Programs\Python\Python312\Lib\site-packages\PyInstaller\bootloader\
+Windows-64bit-intel\runw.exe
+23353 INFO: checking EXE
+23353 INFO: Building EXE because EXE-00.toc is non existent
+23353 INFO: Building EXE from EXE-00.toc
+23353 INFO: Copying bootloader EXE to C:\Users\kaan3\AppData\Local\Temp\DustReplay_build\dist\DustReplay.exe
+23364 INFO: Copying icon to EXE
+23431 INFO: Copying 0 resources to EXE
+23431 INFO: Embedding manifest in EXE
+24236 INFO: Appending PKG archive to EXE
+24330 INFO: Fixing EXE headers
+25547 INFO: Building EXE from EXE-00.toc completed successfully.
+25568 INFO: Build complete! The results are available in: C:\Users\kaan3\AppData\Local\Temp\DustReplay_build\dist
+
+[2026-03-31 04:35:06] Copied to Desktop: C:\Users\kaan3\Desktop\DustReplay.exe
+[2026-03-31 04:35:06] OK: Masaustune kopyalandi: C:\Users\kaan3\Desktop\DustReplay.exe
+[2026-03-31 04:35:06] Build dir removed.
+[2026-03-31 04:35:06] === Setup Completed Successfully ===

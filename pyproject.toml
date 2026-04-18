@@ -1,0 +1,23 @@
+[project]
+name = "dustreplay"
+version = "3.1.0"
+description = "Windows instant replay — rolling screen buffer with global hotkeys (ffmpeg + GPU capture)"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "DustReplay contributors" }]
+keywords = ["screen-recording", "instant-replay", "windows", "ffmpeg", "nvenc"]
+dependencies = [
+    "customtkinter>=5.2.0",
+    "pystray>=0.19.4",
+    "Pillow>=10.0.0",
+    "keyboard>=0.13.5",
+    "psutil>=5.9.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/dustreplay"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"

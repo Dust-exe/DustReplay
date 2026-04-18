@@ -1,0 +1,50 @@
+﻿
+[2026-04-04 04:53:07] === DustReplay Rebuild v3 ===
+[2026-04-04 04:53:07] STEP: HAZIRLIK - Eski build temizleniyor...
+[2026-04-04 04:53:08] OK: Temizlendi
+[2026-04-04 04:53:08] STEP: ADIM 1/2 - Kaynak dosyalar yaziliyor (15 modul)...
+[2026-04-04 04:53:08] All 15 source files written.
+[2026-04-04 04:53:08] OK: Kaynak dosyalar hazir (15 modul)
+[2026-04-04 04:53:08] STEP: ADIM 2/2 - DustReplay.exe derleniyor (3-8 dakika, bekleyin)...
+[2026-04-04 04:53:09] Icon OK (exit 0)
+[2026-04-04 04:53:26] PyInstaller exit=0  last30:
+9620 WARNING: Ignoring AppKit.framework/AppKit imported from C:\Users\kaan3\AppData\Local\Programs\Python\Python312\Lib
+\site-packages\darkdetect\_mac_detect.py - only basenames are supported with ctypes imports!
+9638 INFO: Analyzing run-time hooks ...
+9639 INFO: Including run-time hook 'pyi_rth__tkinter.py' from 'C:\\Users\\kaan3\\AppData\\Local\\Programs\\Python\\Pyth
+on312\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+9642 INFO: Including run-time hook 'pyi_rth_inspect.py' from 'C:\\Users\\kaan3\\AppData\\Local\\Programs\\Python\\Pytho
+n312\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+9670 INFO: Creating base_library.zip...
+9694 INFO: Looking for dynamic libraries
+10093 INFO: Extra DLL search directories (AddDllDirectory): []
+10093 INFO: Extra DLL search directories (PATH): []
+10717 INFO: Warnings written to C:\Users\kaan3\AppData\Local\Temp\DustReplay_build\work\DustReplay\warn-DustReplay.txt
+10748 INFO: Graph cross-reference written to C:\Users\kaan3\AppData\Local\Temp\DustReplay_build\work\DustReplay\xref-Du
+stReplay.html
+10788 INFO: checking PYZ
+10788 INFO: Building PYZ because PYZ-00.toc is non existent
+10788 INFO: Building PYZ (ZlibArchive) C:\Users\kaan3\AppData\Local\Temp\DustReplay_build\work\DustReplay\PYZ-00.pyz
+11054 INFO: Building PYZ (ZlibArchive) C:\Users\kaan3\AppData\Local\Temp\DustReplay_build\work\DustReplay\PYZ-00.pyz co
+mpleted successfully.
+11079 INFO: checking PKG
+11080 INFO: Building PKG because PKG-00.toc is non existent
+11080 INFO: Building PKG (CArchive) DustReplay.pkg
+15550 INFO: Building PKG (CArchive) DustReplay.pkg completed successfully.
+15567 INFO: Bootloader C:\Users\kaan3\AppData\Local\Programs\Python\Python312\Lib\site-packages\PyInstaller\bootloader\
+Windows-64bit-intel\runw.exe
+15567 INFO: checking EXE
+15567 INFO: Building EXE because EXE-00.toc is non existent
+15567 INFO: Building EXE from EXE-00.toc
+15567 INFO: Copying bootloader EXE to C:\Users\kaan3\AppData\Local\Temp\DustReplay_build\dist\DustReplay.exe
+15613 INFO: Copying icon to EXE
+15664 INFO: Copying 0 resources to EXE
+15664 INFO: Embedding manifest in EXE
+15697 INFO: Appending PKG archive to EXE
+15759 INFO: Fixing EXE headers
+16851 INFO: Building EXE from EXE-00.toc completed successfully.
+16869 INFO: Build complete! The results are available in: C:\Users\kaan3\AppData\Local\Temp\DustReplay_build\dist
+
+[2026-04-04 04:53:26] OK: Masaustune kopyalandi: C:\Users\kaan3\Desktop\DustReplay.exe
+[2026-04-04 04:53:26] Copied.
+[2026-04-04 04:53:26] === Rebuild v3 Completed ===
