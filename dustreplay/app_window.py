@@ -251,8 +251,17 @@ class AppWindow(ctk.CTk):
             if w is None:
                 self._hide_panel()
                 return
-            if w.winfo_toplevel() == self._panel:
+            top = w.winfo_toplevel()
+            if top == self._panel:
                 return
+            # Hardware stats overlay is its own Toplevel; keep panel open while it has focus.
+            sw = getattr(self, "_stats_win", None)
+            if sw is not None:
+                try:
+                    if sw.winfo_exists() and top == sw:
+                        return
+                except Exception:
+                    pass
         except Exception:
             pass
         self._hide_panel()

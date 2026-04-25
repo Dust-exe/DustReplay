@@ -76,11 +76,6 @@ class StatsWindow(ctk.CTkToplevel):
         self._gpu_cache = ""
         self._gpu_cache_at = 0.0
 
-        try:
-            self.withdraw()
-        except Exception:
-            pass
-
         self.overrideredirect(True)
         self.attributes("-topmost", True)
         try:
@@ -136,7 +131,6 @@ class StatsWindow(ctk.CTkToplevel):
         self._apply_corner_geometry()
         self._schedule_tick()
         try:
-            self.deiconify()
             self.lift()
             self.attributes("-topmost", True)
         except Exception:
@@ -201,7 +195,10 @@ class StatsWindow(ctk.CTkToplevel):
         self.destroy()
 
     def _schedule_tick(self):
-        self._refresh()
+        try:
+            self._refresh()
+        except Exception as e:
+            logger.debug("stats refresh: %s", e)
         self._tick_id = self.after(1000, self._schedule_tick)
 
     def destroy(self):
@@ -211,6 +208,12 @@ class StatsWindow(ctk.CTkToplevel):
             except Exception:
                 pass
             self._tick_id = None
+        try:
+            app = getattr(self, "_app", None)
+            if app is not None and getattr(app, "_stats_win", None) is self:
+                app._stats_win = None
+        except Exception:
+            pass
         super().destroy()
 
     def _gpu_text(self) -> str:
