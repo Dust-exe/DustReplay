@@ -22,6 +22,7 @@ _BG = "#0a0612"
 _LBL = "#ffffff"
 _VAL = "#aa77ff"
 _CORNERS = ("tl", "tr", "bl", "br")
+_TRANSPARENT_KEY = "#010203"
 
 
 def _subprocess_flags():
@@ -71,7 +72,6 @@ class StatsWindow(ctk.CTkToplevel):
         self._tick_id = None
         self._gpu_cache = ""
         self._gpu_cache_at = 0.0
-        self._corner_btns: dict[str, ctk.CTkButton] = {}
 
         self.overrideredirect(True)
         self.attributes("-topmost", True)
@@ -82,12 +82,19 @@ class StatsWindow(ctk.CTkToplevel):
             a = 0.88
         self.attributes("-alpha", a)
 
-        self.configure(fg_color=_BG)
+        self.configure(fg_color="transparent")
+        # Win32 only: color-key transparency for HUD-like floating text panel.
+        try:
+            if sys.platform == "win32":
+                self.configure(bg=_TRANSPARENT_KEY)
+                self.wm_attributes("-transparentcolor", _TRANSPARENT_KEY)
+        except Exception:
+            pass
         self.resizable(False, False)
         self.minsize(self._W, self._H)
         self.maxsize(self._W, self._H)
 
-        outer = ctk.CTkFrame(self, fg_color=_BG, corner_radius=0, border_width=0)
+        outer = ctk.CTkFrame(self, fg_color="transparent", corner_radius=0, border_width=0)
         outer.pack(fill="both", expand=True, padx=0, pady=0)
 
         hdr = ctk.CTkFrame(outer, fg_color="transparent", height=20)
@@ -116,44 +123,27 @@ class StatsWindow(ctk.CTkToplevel):
             command=self._close,
         ).pack(side="right")
 
-        cr = ctk.CTkFrame(outer, fg_color="transparent", height=20)
-        cr.pack(fill="x", padx=4, pady=(2, 2))
-        cr.pack_propagate(False)
-        inn = ctk.CTkFrame(cr, fg_color="transparent")
-        inn.place(relx=0.5, rely=0.5, anchor="center")
-
-        for code, txt in zip(_CORNERS, ("TL", "TR", "BL", "BR")):
-            b = ctk.CTkButton(
-                inn,
-                text=txt,
-                width=28,
-                height=18,
-                font=ctk.CTkFont(size=9, weight="bold"),
-                fg_color="#12121a",
-                hover_color="#1e1e28",
-                corner_radius=3,
-                text_color="#888899",
-                border_width=0,
-                command=lambda c=code: self._set_corner(c),
-            )
-            b.pack(side="left", padx=1)
-            self._corner_btns[code] = b
-
         self._body = ctk.CTkFrame(outer, fg_color="transparent")
-        self._body.pack(fill="both", expand=True, padx=6, pady=(0, 4))
+        self._body.pack(fill="both", expand=True, padx=6, pady=(3, 4))
 
         self._lbl_cpu = self._metric_row(0, "CPU")
         self._lbl_ram = self._metric_row(1, "RAM")
         self._lbl_gpu = self._metric_row(2, "GPU")
-        self._lbl_fps = self._metric_row(3, "FPS")
+        self._lbl_fps = self._metric_row(3, "Client FPS", fps_style=True)
 
         self.protocol("WM_DELETE_WINDOW", self._close)
-        self._sync_corner_buttons()
         self._apply_corner_geometry()
         self._schedule_tick()
 
-    def _metric_row(self, row: int, name: str):
-        fr = ctk.CTkFrame(self._body, fg_color="transparent")
+    def _metric_row(self, row: int, name: str, fps_style: bool = False):
+        fr_bg = "#181020" if fps_style else "transparent"
+        fr = ctk.CTkFrame(
+            self._body,
+            fg_color=fr_bg,
+            border_width=1 if fps_style else 0,
+            border_color="#8060aa" if fps_style else "transparent",
+            corner_radius=4 if fps_style else 0,
+        )
         fr.grid(row=row, column=0, sticky="ew", pady=1)
         self._body.grid_columnconfigure(0, weight=1)
         ctk.CTkLabel(
@@ -173,30 +163,6 @@ class StatsWindow(ctk.CTkToplevel):
         )
         val.pack(side="right", fill="x", expand=True)
         return val
-
-    def _set_corner(self, code: str):
-        if code not in _CORNERS:
-            return
-        config.set("stats_overlay_corner", code)
-        try:
-            config.save()
-        except Exception as e:
-            logger.debug("stats overlay corner save: %s", e)
-        self._apply_corner_geometry()
-        self._sync_corner_buttons()
-
-    def _sync_corner_buttons(self):
-        cur = (config.get("stats_overlay_corner") or "br").lower()
-        if cur not in _CORNERS:
-            cur = "br"
-        for c, btn in self._corner_btns.items():
-            on = c == cur
-            btn.configure(
-                fg_color="#1c1c26" if on else "#12121a",
-                text_color=_LBL if on else "#888899",
-                border_width=1 if on else 0,
-                border_color="#3a3a48" if on else "#12121a",
-            )
 
     def _apply_corner_geometry(self):
         try:
