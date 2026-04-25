@@ -9,6 +9,7 @@ import customtkinter as ctk
 from PIL import Image
 
 import config
+import i18n
 
 _BG = "#050508"
 _HV = "#0d0d1a"
@@ -77,7 +78,34 @@ class HomePage(ctk.CTkFrame):
         self._build_stats()
 
     def _build_gallery(self):
-        self._sec_hdr("\U0001f3ac", "Gallery", "All \u203a", lambda: self.app.sp("recordings"))
+        f = ctk.CTkFrame(self, fg_color="transparent", height=40)
+        f.pack(fill="x")
+        f.pack_propagate(False)
+        inn = ctk.CTkFrame(f, fg_color="transparent")
+        inn.place(relx=0, rely=0, relwidth=1, relheight=1)
+        ctk.CTkLabel(
+            inn, text="\U0001f3ac", font=ctk.CTkFont(size=16), width=44, text_color=_WH
+        ).pack(side="left", padx=(12, 2))
+        self._gal_title_lbl = ctk.CTkLabel(
+            inn,
+            text=i18n.t("home.gallery"),
+            font=ctk.CTkFont(size=13, weight="bold"),
+            text_color=_WH,
+            anchor="w",
+        )
+        self._gal_title_lbl.pack(side="left", fill="y")
+        self._gal_all_btn = ctk.CTkButton(
+            inn,
+            text=i18n.t("home.gallery_all"),
+            width=54,
+            height=22,
+            font=ctk.CTkFont(size=10),
+            fg_color="transparent",
+            hover_color=_HV,
+            text_color=_GR,
+            command=lambda: self.app.sp("recordings"),
+        )
+        self._gal_all_btn.pack(side="right", padx=10)
         self._gcanvas = tk.Canvas(self, bg=_BG, highlightthickness=0, height=104)
         self._gcanvas.pack(fill="x", padx=8, pady=(0, 8))
         self._gframe = tk.Frame(self._gcanvas, bg=_BG)
@@ -88,7 +116,7 @@ class HomePage(ctk.CTkFrame):
         )
         self._gempty = ctk.CTkLabel(
             self,
-            text="\U0001f4c2  Press your save hotkey to keep a clip.",
+            text=i18n.t("home.gallery_empty"),
             font=ctk.CTkFont(size=11),
             text_color=_GR,
         )
@@ -155,6 +183,8 @@ class HomePage(ctk.CTkFrame):
 
         def _open(p=fp):
             try:
+                if hasattr(self.app, "close_panel"):
+                    self.app.close_panel()
                 os.startfile(os.path.normpath(p))
             except Exception:
                 pass
@@ -223,23 +253,35 @@ class HomePage(ctk.CTkFrame):
     def _build_actions(self):
         hk_s = str(config.get("hotkey_save")).upper()
         hk_t = str(config.get("hotkey_toggle")).upper()
-        _, _, self._sub_save = self._action_row(
-            "\U0001f4be", "Save clip", f"Hotkey: {hk_s}", self.app.do_save
-        )
-        self._ticon_lbl, self._ttitle_lbl, self._sub_stop = self._action_row(
-            "\u23f8", "Stop", f"Hotkey: {hk_t}", self.app.do_toggle
-        )
-        self._action_row(
-            "\U0001f3ac", "Recordings", "Open folder & list", lambda: self.app.sp("recordings")
-        )
-        self._action_row(
-            "\u2699", "Settings", "Audio, quality, hotkeys", lambda: self.app.sp("settings")
+        _, self._title_save, self._sub_save = self._action_row(
+            "\U0001f4be",
+            i18n.t("home.save"),
+            i18n.t("home.hotkey", hk=hk_s),
+            self.app.do_save,
         )
         self._manual_icon, self._manual_title, self._sub_manual = self._action_row(
             "\U0001f3a5",
-            "Record to file",
-            "Continuous MP4 until you stop",
+            i18n.t("home.direct"),
+            i18n.t("home.direct_sub"),
             self._on_manual_row_click,
+        )
+        self._ticon_lbl, self._ttitle_lbl, self._sub_stop = self._action_row(
+            "\u23f8",
+            i18n.t("home.cap_stop"),
+            i18n.t("home.hotkey", hk=hk_t),
+            self.app.do_toggle,
+        )
+        _, self._title_rec, self._sub_rec = self._action_row(
+            "\U0001f3ac",
+            i18n.t("home.recordings"),
+            i18n.t("home.recordings_sub"),
+            lambda: self.app.sp("recordings"),
+        )
+        _, self._title_set, self._sub_set = self._action_row(
+            "\u2699",
+            i18n.t("home.settings"),
+            i18n.t("home.settings_sub"),
+            lambda: self.app.sp("settings"),
         )
 
     def _action_row(self, icon, title, sub="", cmd=None):
@@ -384,7 +426,7 @@ class HomePage(ctk.CTkFrame):
         mon = int(config.get("monitor_index") or 1)
         self._stat_lbl = ctk.CTkLabel(
             fr,
-            text=f"Target {fps} FPS  \u2022  Display #{mon}",
+            text=i18n.t("home.stat_line", fps=fps, mon=mon),
             font=ctk.CTkFont(size=10),
             text_color=_GR,
         )
@@ -400,21 +442,21 @@ class HomePage(ctk.CTkFrame):
             return
         if active:
             self._manual_icon.configure(text="\u23f9")
-            self._manual_title.configure(text="Stop file recording")
-            self._sub_manual.configure(text="Continuous MP4 in output folder")
+            self._manual_title.configure(text=i18n.t("home.direct_stop"))
+            self._sub_manual.configure(text=i18n.t("home.direct_stop_sub"))
         else:
             self._manual_icon.configure(text="\U0001f3a5")
-            self._manual_title.configure(text="Record to file")
-            self._sub_manual.configure(text="Continuous MP4 until you stop")
+            self._manual_title.configure(text=i18n.t("home.direct"))
+            self._sub_manual.configure(text=i18n.t("home.direct_sub"))
 
     def set_recording(self, rec):
         try:
             if rec:
                 self._ticon_lbl.configure(text="\u23f8")
-                self._ttitle_lbl.configure(text="Stop")
+                self._ttitle_lbl.configure(text=i18n.t("home.cap_stop"))
             else:
                 self._ticon_lbl.configure(text="\u25b6")
-                self._ttitle_lbl.configure(text="Start")
+                self._ttitle_lbl.configure(text=i18n.t("home.cap_start"))
         except Exception:
             pass
 
@@ -433,18 +475,53 @@ class HomePage(ctk.CTkFrame):
     def refresh_hotkeys(self):
         if self._sub_save:
             self._sub_save.configure(
-                text=f"Hotkey: {str(config.get('hotkey_save')).upper()}"
+                text=i18n.t("home.hotkey", hk=str(config.get("hotkey_save")).upper())
             )
         if self._sub_stop:
             self._sub_stop.configure(
-                text=f"Hotkey: {str(config.get('hotkey_toggle')).upper()}"
+                text=i18n.t("home.hotkey", hk=str(config.get("hotkey_toggle")).upper())
             )
         try:
             mon = int(config.get("monitor_index") or 1)
             fps = str(config.get("fps"))
-            self._stat_lbl.configure(text=f"Target {fps} FPS  \u2022  Display #{mon}")
+            self._stat_lbl.configure(text=i18n.t("home.stat_line", fps=fps, mon=mon))
         except Exception:
             pass
+
+    def refresh_home_texts(self):
+        """Re-apply labels when UI language changes."""
+        hk_s = str(config.get("hotkey_save")).upper()
+        hk_t = str(config.get("hotkey_toggle")).upper()
+        if getattr(self, "_gal_title_lbl", None):
+            self._gal_title_lbl.configure(text=i18n.t("home.gallery"))
+        if getattr(self, "_gal_all_btn", None):
+            self._gal_all_btn.configure(text=i18n.t("home.gallery_all"))
+        if getattr(self, "_gempty", None):
+            self._gempty.configure(text=i18n.t("home.gallery_empty"))
+        if getattr(self, "_title_save", None):
+            self._title_save.configure(text=i18n.t("home.save"))
+        if self._sub_save:
+            self._sub_save.configure(text=i18n.t("home.hotkey", hk=hk_s))
+        if getattr(self, "_manual_title", None) and self._sub_manual:
+            if self.app.recorder.manual_recording_active():
+                self._manual_title.configure(text=i18n.t("home.direct_stop"))
+                self._sub_manual.configure(text=i18n.t("home.direct_stop_sub"))
+            else:
+                self._manual_title.configure(text=i18n.t("home.direct"))
+                self._sub_manual.configure(text=i18n.t("home.direct_sub"))
+        if self._sub_stop:
+            self._sub_stop.configure(text=i18n.t("home.hotkey", hk=hk_t))
+        if getattr(self, "_title_rec", None):
+            self._title_rec.configure(text=i18n.t("home.recordings"))
+        if getattr(self, "_sub_rec", None):
+            self._sub_rec.configure(text=i18n.t("home.recordings_sub"))
+        if getattr(self, "_title_set", None):
+            self._title_set.configure(text=i18n.t("home.settings"))
+        if getattr(self, "_sub_set", None):
+            self._sub_set.configure(text=i18n.t("home.settings_sub"))
+        if self._ttitle_lbl:
+            self.set_recording(getattr(self.app, "_recording", True))
+        self.refresh_hotkeys()
 
     def refresh_gallery(self):
         self._load_gallery()

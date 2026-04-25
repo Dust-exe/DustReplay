@@ -5,6 +5,7 @@ import tkinter.filedialog as fd
 import customtkinter as ctk
 
 import config
+import i18n
 import startup
 
 _P = "#8833ee"
@@ -14,11 +15,6 @@ _PD = "#0e0018"
 _NONE_MIC = "(No microphone)"
 _NONE_SYS = "(No system audio)"
 
-_ENC_LABELS = [
-    "Auto (NVENC if available)",
-    "NVIDIA NVENC only",
-    "CPU H.264 (libx264)",
-]
 _ENC_VALUES = ["auto", "nvenc", "cpu"]
 
 
@@ -75,13 +71,18 @@ class SettingsPage(ctk.CTkFrame):
         self._sys_items = [_NONE_SYS]
         self._mic_dd_widget = None
         self._sys_dd_widget = None
-        self._build()
+        self._lang_var = None
+        self._rebuild()
         self.after(300, self._load_audio_async)
 
-    def _build(self):
+    def _rebuild(self):
+        for w in self.winfo_children():
+            w.destroy()
+        self._v = {}
+
         ctk.CTkLabel(
             self,
-            text="\u2699\ufe0f  Settings",
+            text=i18n.t("settings.title"),
             font=ctk.CTkFont(size=20, weight="bold"),
             text_color="white",
         ).pack(pady=(22, 6), anchor="w", padx=26)
@@ -92,51 +93,64 @@ class SettingsPage(ctk.CTkFrame):
         self._scroll.pack(fill="both", expand=True, padx=0, pady=0)
         s = self._scroll
 
-        self._sec(s, "\U0001f5a5\ufe0f  Display")
+        self._sec(s, "sec.display")
         self._monitor_dd(s)
-        self._sec(s, "\U0001f3a5  Recording")
+        self._sec(s, "sec.recording")
         self._encoder_dd(s)
-        self._sld(s, "save_minutes", "Clip length to save (min)", 1, 10)
-        self._sld(s, "buffer_minutes", "Rolling buffer (min)", 5, 60)
-        self._sld(s, "fps", "Target FPS", 15, 60)
-        self._sld(s, "quality", "Quality (lower = better, NVENC CQ / x264 CRF)", 18, 40)
+        self._sld(s, "buffer_minutes", "rec.buffer", 5, 60, "rec.buffer.hint")
+        self._sld(s, "fps", "rec.fps", 15, 60, "rec.fps.hint")
+        self._sld(s, "quality", "rec.quality", 18, 40, "rec.quality.hint")
 
-        self._sec(s, "\U0001f3a7  Audio")
+        self._sec(s, "sec.audio")
         self._audio_section(s)
 
-        self._sec(s, "\u2328\ufe0f  Hotkeys")
-        self._ent(s, "hotkey_save", "Save replay hotkey")
-        self._ent(s, "hotkey_toggle", "Stop / start recording")
-        self._ent(s, "panel_hotkey", "Toggle side panel")
+        self._sec(s, "sec.hotkeys")
+        self._ent(s, "hotkey_save", "hk.save")
+        self._ent(s, "hotkey_toggle", "hk.toggle")
+        self._ent(s, "panel_hotkey", "hk.panel")
         self._panel_side_dd(s)
 
-        self._sec(s, "\U0001f4c2  Output folder")
+        self._sec(s, "sec.output")
         self._fld(s, "output_dir")
 
-        self._sec(s, "\U0001f534  Indicator")
-        self._tgl(
-            s,
-            "overlay_enabled",
-            "Small REC pill (drag to move; position is saved)",
-        )
+        self._sec(s, "sec.indicator")
+        self._tgl(s, "overlay_enabled", "ind.rec")
 
-        self._sec(s, "\U0001f4ca  Live stats panel (Home → Statistics)")
-        self._tgl(s, "stats_show_target_fps", "Target FPS")
-        self._tgl(s, "stats_show_display", "Display index")
-        self._tgl(s, "stats_show_encoder", "Encoder (setting + pipeline)")
-        self._tgl(s, "stats_show_buffer", "Buffer fill")
-        self._tgl(s, "stats_show_capture_state", "Capture state (buffer / manual)")
-        self._tgl(s, "stats_show_cpu", "CPU % (needs psutil)")
-        self._tgl(s, "stats_show_ram", "RAM % (needs psutil)")
-        self._tgl(s, "stats_show_disk", "Free disk on output drive")
-        self._tgl(s, "stats_show_uptime", "App uptime (seconds)")
+        self._sec(s, "sec.hardware")
+        self._tgl(s, "stats_show_cpu", "hw.cpu")
+        self._tgl(s, "stats_show_ram", "hw.ram")
+        self._tgl(s, "stats_show_gpu", "hw.gpu")
 
-        self._sec(s, "\U0001f680  Startup")
+        self._sec(s, "sec.startup")
         self._strt(s)
+
+        lang_fr = ctk.CTkFrame(self, fg_color="#0a0a12", corner_radius=10)
+        lang_fr.pack(fill="x", padx=16, pady=(10, 6))
+        ctk.CTkLabel(
+            lang_fr,
+            text=i18n.t("settings.language"),
+            anchor="w",
+            text_color="#bbaadd",
+            font=ctk.CTkFont(size=13, weight="bold"),
+        ).pack(side="left", padx=(14, 8), pady=12)
+        cur = (config.get("ui_language") or "en").lower()
+        init = "English" if cur != "tr" else "Türkçe"
+        self._lang_var = ctk.StringVar(value=init)
+        ctk.CTkOptionMenu(
+            lang_fr,
+            variable=self._lang_var,
+            values=["English", "Türkçe"],
+            command=self._on_language,
+            fg_color="#150030",
+            button_color=_P,
+            button_hover_color=_PH,
+            dropdown_fg_color="#0e0018",
+            width=160,
+        ).pack(side="right", padx=14, pady=10)
 
         ctk.CTkButton(
             self,
-            text="\u2713  Save settings",
+            text=i18n.t("settings.save"),
             height=44,
             font=ctk.CTkFont(size=14, weight="bold"),
             fg_color=_P,
@@ -145,7 +159,16 @@ class SettingsPage(ctk.CTkFrame):
             command=self._save,
         ).pack(pady=(4, 16), padx=20, fill="x")
 
+    def _on_language(self, choice):
+        config.set("ui_language", "tr" if choice == "Türkçe" else "en")
+        config.save()
+        self._rebuild()
+        self.after(200, self._load_audio_async)
+        if self.app:
+            self.app.refresh_ui_language()
+
     def _encoder_dd(self, p):
+        labels = i18n.encoder_labels()
         cur = (config.get("video_encoder") or "auto").lower()
         try:
             ix = _ENC_VALUES.index(cur)
@@ -155,16 +178,16 @@ class SettingsPage(ctk.CTkFrame):
         r.pack(fill="x", padx=8, pady=4)
         ctk.CTkLabel(
             r,
-            text="Video encoder",
+            text=i18n.t("rec.encoder"),
             anchor="w",
             text_color="#bbaadd",
             font=ctk.CTkFont(size=12),
         ).pack(side="left", padx=(12, 0), pady=12)
-        self._enc_var = ctk.StringVar(value=_ENC_LABELS[ix])
+        self._enc_var = ctk.StringVar(value=labels[ix])
         ctk.CTkOptionMenu(
             r,
             variable=self._enc_var,
-            values=_ENC_LABELS,
+            values=labels,
             fg_color="#150030",
             button_color=_P,
             button_hover_color=_PH,
@@ -173,25 +196,24 @@ class SettingsPage(ctk.CTkFrame):
         ).pack(side="right", padx=12, pady=8)
 
     def _panel_side_dd(self, p):
-        _side_opts = ["\u25c4 Left edge", "Right edge \u25ba"]
-        _side_map = {"left": _side_opts[0], "right": _side_opts[1]}
-        _side_rmap = {v: k for k, v in _side_map.items()}
-        cur = _side_map.get(config.get("panel_side"), _side_opts[1])
+        labels = i18n.panel_side_labels()
+        cur_side = config.get("panel_side") or "right"
+        cur = labels[0] if cur_side == "left" else labels[1]
         r = ctk.CTkFrame(p, fg_color=_PD, corner_radius=8)
         r.pack(fill="x", padx=8, pady=4)
         ctk.CTkLabel(
             r,
-            text="Panel side",
+            text=i18n.t("panel.side"),
             anchor="w",
             text_color="#bbaadd",
             font=ctk.CTkFont(size=12),
         ).pack(side="left", padx=(12, 0), pady=12)
         self._side_var = ctk.StringVar(value=cur)
-        self._side_rmap = _side_rmap
+        self._panel_labels = labels
         ctk.CTkOptionMenu(
             r,
             variable=self._side_var,
-            values=_side_opts,
+            values=labels,
             fg_color="#150030",
             button_color=_P,
             button_hover_color=_PH,
@@ -208,7 +230,7 @@ class SettingsPage(ctk.CTkFrame):
         r.pack(fill="x", padx=8, pady=4)
         ctk.CTkLabel(
             r,
-            text="Capture display",
+            text=i18n.t("disp.capture"),
             anchor="w",
             text_color="#bbaadd",
             font=ctk.CTkFont(size=12),
@@ -230,7 +252,7 @@ class SettingsPage(ctk.CTkFrame):
         r1.pack(fill="x", padx=8, pady=4)
         ctk.CTkLabel(
             r1,
-            text="\U0001f3a7  Microphone",
+            text=i18n.t("audio.mic"),
             anchor="w",
             text_color="#bbaadd",
             font=ctk.CTkFont(size=12),
@@ -252,7 +274,7 @@ class SettingsPage(ctk.CTkFrame):
         r2.pack(fill="x", padx=8, pady=4)
         ctk.CTkLabel(
             r2,
-            text="\U0001f50a  System audio",
+            text=i18n.t("audio.sys"),
             anchor="w",
             text_color="#bbaadd",
             font=ctk.CTkFont(size=12),
@@ -274,14 +296,14 @@ class SettingsPage(ctk.CTkFrame):
         hint_row.pack(fill="x", padx=14, pady=(2, 4))
         self._audio_hint = ctk.CTkLabel(
             hint_row,
-            text="  \u23f3 Loading audio devices…",
+            text=i18n.t("audio.loading"),
             font=ctk.CTkFont(size=11),
             text_color="#554477",
         )
         self._audio_hint.pack(side="left", anchor="w")
         self._audio_refresh_btn = ctk.CTkButton(
             hint_row,
-            text="\u27f3 Refresh",
+            text=i18n.t("audio.refresh"),
             width=72,
             fg_color="#150030",
             hover_color=_PH,
@@ -300,7 +322,7 @@ class SettingsPage(ctk.CTkFrame):
 
     def _refresh_audio(self):
         if self._audio_hint:
-            self._audio_hint.configure(text="  \u23f3 Refreshing…", text_color="#554477")
+            self._audio_hint.configure(text=i18n.t("audio.loading"), text_color="#554477")
         self._load_audio_async()
 
     def _apply_audio_devices(self, mic_items, sys_items):
@@ -328,31 +350,59 @@ class SettingsPage(ctk.CTkFrame):
 
             n = max(0, len(mic_items) - 2)
             if self._audio_hint:
-                self._audio_hint.configure(
-                    text=f"  \u2713 {n} device(s) found." if n > 0 else "  \u26a0 Limited devices. Try Refresh.",
-                    text_color="#554477" if n > 0 else "#886600",
-                )
+                if n > 0:
+                    self._audio_hint.configure(
+                        text=i18n.t("audio.found", n=n),
+                        text_color="#554477",
+                    )
+                else:
+                    self._audio_hint.configure(
+                        text=i18n.t("audio.limited"),
+                        text_color="#886600",
+                    )
         except Exception:
             pass
 
-    def _sec(self, p, t):
+    def _sec(self, p, key):
         ctk.CTkLabel(
-            p, text=t, font=ctk.CTkFont(size=12, weight="bold"), text_color="#9944ee"
+            p,
+            text=i18n.t(key),
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color="#9944ee",
         ).pack(anchor="w", padx=12, pady=(20, 2))
         ctk.CTkFrame(p, height=1, fg_color="#220044").pack(fill="x", padx=8, pady=(0, 6))
 
-    def _sld(self, p, k, l, f, t):
+    def _sld(self, p, k, label_key, f, t, hint_key=None):
         v = ctk.IntVar(value=int(config.get(k)))
         self._v[k] = (v, int)
         r = ctk.CTkFrame(p, fg_color=_PD, corner_radius=8)
         r.pack(fill="x", padx=8, pady=4)
+        top = ctk.CTkFrame(r, fg_color="transparent")
+        top.pack(fill="x", padx=12, pady=(10, 2))
         ctk.CTkLabel(
-            r, text=l, anchor="w", text_color="#bbaadd", font=ctk.CTkFont(size=12)
-        ).pack(side="left", padx=(12, 0), pady=12)
+            top,
+            text=i18n.t(label_key),
+            anchor="w",
+            text_color="#bbaadd",
+            font=ctk.CTkFont(size=12),
+        ).pack(side="left")
         lb = ctk.CTkLabel(
-            r, text=str(v.get()), width=40, text_color="white", font=ctk.CTkFont(size=13, weight="bold")
+            top,
+            text=str(v.get()),
+            width=40,
+            text_color="white",
+            font=ctk.CTkFont(size=13, weight="bold"),
         )
-        lb.pack(side="right", padx=(0, 12))
+        lb.pack(side="right")
+        if hint_key:
+            ctk.CTkLabel(
+                r,
+                text=i18n.t(hint_key),
+                anchor="w",
+                text_color="#665588",
+                font=ctk.CTkFont(size=10),
+                wraplength=260,
+            ).pack(fill="x", padx=12, pady=(0, 6))
         ctk.CTkSlider(
             r,
             variable=v,
@@ -362,18 +412,18 @@ class SettingsPage(ctk.CTkFrame):
             button_color=_P,
             button_hover_color=_PH,
             progress_color=_P,
-            height=14,
+            height=16,
             command=lambda x, lb=lb: lb.configure(text=str(int(float(x)))),
-        ).pack(side="right", padx=6, fill="x", expand=True)
+        ).pack(fill="x", padx=12, pady=(0, 12))
 
-    def _tgl(self, p, k, l):
+    def _tgl(self, p, k, label_key):
         v = ctk.BooleanVar(value=bool(config.get(k)))
         self._v[k] = (v, bool)
         r = ctk.CTkFrame(p, fg_color=_PD, corner_radius=8)
         r.pack(fill="x", padx=8, pady=4)
         ctk.CTkLabel(
             r,
-            text=l,
+            text=i18n.t(label_key),
             anchor="w",
             text_color="#bbaadd",
             font=ctk.CTkFont(size=12),
@@ -388,14 +438,14 @@ class SettingsPage(ctk.CTkFrame):
             progress_color=_P,
         ).pack(side="right", padx=12)
 
-    def _ent(self, p, k, l):
+    def _ent(self, p, k, label_key):
         v = ctk.StringVar(value=str(config.get(k)))
         self._v[k] = (v, str)
         r = ctk.CTkFrame(p, fg_color=_PD, corner_radius=8)
         r.pack(fill="x", padx=8, pady=4)
         ctk.CTkLabel(
             r,
-            text=l,
+            text=i18n.t(label_key),
             anchor="w",
             text_color="#bbaadd",
             font=ctk.CTkFont(size=12),
@@ -415,7 +465,7 @@ class SettingsPage(ctk.CTkFrame):
         ).pack(side="left", fill="x", expand=True, padx=(12, 6), pady=10)
         ctk.CTkButton(
             r,
-            text="Browse",
+            text=i18n.t("out.browse"),
             width=68,
             fg_color="#150030",
             hover_color=_PH,
@@ -432,7 +482,7 @@ class SettingsPage(ctk.CTkFrame):
         r.pack(fill="x", padx=6, pady=3)
         self._sl = ctk.CTkLabel(
             r,
-            text="\u2713 Run at logon (Task Scheduler)" if reg else "\u2715 Not registered for logon",
+            text=i18n.t("su.on") if reg else i18n.t("su.off"),
             text_color="#4caf50" if reg else "#888",
             anchor="w",
             font=ctk.CTkFont(size=12),
@@ -440,7 +490,7 @@ class SettingsPage(ctk.CTkFrame):
         self._sl.pack(side="left", padx=(14, 0), pady=10)
         ctk.CTkButton(
             r,
-            text="Toggle",
+            text=i18n.t("su.toggle"),
             width=90,
             fg_color="#2a004a",
             hover_color=_PH,
@@ -452,12 +502,10 @@ class SettingsPage(ctk.CTkFrame):
     def _ts(self):
         if startup.is_registered():
             startup.unregister()
-            self._sl.configure(text="\u2715 Not registered for logon", text_color="#888")
+            self._sl.configure(text=i18n.t("su.off"), text_color="#888")
         else:
             if startup.register():
-                self._sl.configure(
-                    text="\u2713 Run at logon (Task Scheduler)", text_color="#4caf50"
-                )
+                self._sl.configure(text=i18n.t("su.on"), text_color="#4caf50")
 
     def _save(self):
         mon_sel = self._mon_var.get()
@@ -468,7 +516,8 @@ class SettingsPage(ctk.CTkFrame):
         config.set("monitor_index", mon_idx)
 
         try:
-            ei = _ENC_LABELS.index(self._enc_var.get())
+            labels = i18n.encoder_labels()
+            ei = labels.index(self._enc_var.get())
             config.set("video_encoder", _ENC_VALUES[ei])
         except ValueError:
             config.set("video_encoder", "auto")
@@ -477,7 +526,10 @@ class SettingsPage(ctk.CTkFrame):
 
         config.set("mic_device", label_to_config(self._mic_var.get(), "mic"))
         config.set("sys_audio_device", label_to_config(self._sys_var.get(), "sys"))
-        config.set("panel_side", self._side_rmap.get(self._side_var.get(), "right"))
+
+        plabs = getattr(self, "_panel_labels", i18n.panel_side_labels())
+        sel = self._side_var.get()
+        config.set("panel_side", "left" if sel == plabs[0] else "right")
 
         for k, (v, c) in self._v.items():
             try:

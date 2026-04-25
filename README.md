@@ -48,7 +48,6 @@ The script installs dependencies, runs PyInstaller, and copies `DustReplay.exe` 
 | Key | Meaning |
 |-----|---------|
 | `buffer_minutes` | How far back segments are kept on disk |
-| `save_minutes` | How much of that buffer is merged when you save |
 | `monitor_index` | **1-based** display index (matches the Settings list) |
 | `video_encoder` | `auto` / `nvenc` / `cpu` |
 | `hotkey_save`, `hotkey_toggle`, `panel_hotkey` | Passed to the `keyboard` library |

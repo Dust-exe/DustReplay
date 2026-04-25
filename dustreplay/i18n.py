@@ -1,0 +1,172 @@
+"""UI strings (English default, Turkish optional)."""
+
+import config
+
+_MSG = {
+    "en": {
+        "nav.home": "\U0001f3e0 Home",
+        "nav.clips": "\U0001f3ac Clips",
+        "nav.settings": "\u2699\ufe0f Settings",
+        "badge.live": "LIVE",
+        "badge.off": "OFF",
+        "settings.title": "\u2699\ufe0f  Settings",
+        "settings.save": "\u2713  Save settings",
+        "settings.language": "Language",
+        "settings.lang_en": "English",
+        "settings.lang_tr": "Türkçe",
+        "sec.display": "\U0001f5a5\ufe0f  Display",
+        "sec.recording": "\U0001f3a5  Recording",
+        "sec.audio": "\U0001f3a7  Audio",
+        "sec.hotkeys": "\u2328\ufe0f  Hotkeys",
+        "sec.output": "\U0001f4c2  Output folder",
+        "sec.indicator": "\U0001f534  Indicator",
+        "sec.hardware": "\U0001f4ca  Hardware overlay",
+        "sec.startup": "\U0001f680  Startup",
+        "disp.capture": "Screen to capture",
+        "rec.encoder": "Video encoder",
+        "rec.buffer": "Rolling buffer (minutes)",
+        "rec.buffer.hint": "Keeps this many minutes in memory; Save writes the same length to a file.",
+        "rec.fps": "Target FPS",
+        "rec.fps.hint": "Higher = smoother but uses more CPU/GPU.",
+        "rec.quality": "Video quality",
+        "rec.quality.hint": "Lower number = sharper image and larger files. Range 18 (best) to 40 (smaller).",
+        "enc.auto": "Auto (use GPU if available)",
+        "enc.nvenc": "NVIDIA NVENC only",
+        "enc.cpu": "CPU H.264",
+        "panel.side": "Panel opens from",
+        "panel.left": "Left edge",
+        "panel.right": "Right edge",
+        "audio.mic": "\U0001f3a7  Microphone",
+        "audio.sys": "\U0001f50a  System sound",
+        "audio.loading": "  Loading audio devices…",
+        "audio.refresh": "\u27f3 Refresh",
+        "audio.found": "  {n} device(s) found.",
+        "audio.limited": "  Few devices listed. Try Refresh.",
+        "hk.save": "Save replay (hotkey)",
+        "hk.toggle": "Pause / resume capture (hotkey)",
+        "hk.panel": "Open / close panel (hotkey)",
+        "out.folder": "Folder for replay files",
+        "out.browse": "Browse",
+        "ind.rec": "Small REC dot on screen (drag to move; position is saved)",
+        "hw.cpu": "Show CPU usage",
+        "hw.ram": "Show RAM usage",
+        "hw.gpu": "Show GPU usage (NVIDIA: nvidia-smi)",
+        "su.on": "\u2713 Run at Windows startup",
+        "su.off": "\u2715 Not set to run at startup",
+        "su.toggle": "Change",
+        "msg.settings_saved": "Settings saved. Restarting capture…",
+        "home.gallery": "Gallery",
+        "home.gallery_all": "All \u203a",
+        "home.gallery_empty": "\U0001f4c2  Press your save hotkey to keep a clip.",
+        "home.hotkey": "Hotkey: {hk}",
+        "home.save": "Save replay clip",
+        "home.direct": "Direct record (MP4)",
+        "home.direct_sub": "Normal recording (not the buffer). Tap again to stop.",
+        "home.direct_stop": "Stop direct recording",
+        "home.direct_stop_sub": "Saves the MP4 to your output folder",
+        "home.cap_stop": "Pause capture",
+        "home.cap_start": "Resume capture",
+        "home.cap_sub": "Rolling buffer on / off",
+        "home.recordings": "Recordings",
+        "home.recordings_sub": "Open folder and full list",
+        "home.settings": "Settings",
+        "home.settings_sub": "Audio, quality, hotkeys, language",
+        "home.stat_line": "Target {fps} FPS  \u2022  Display #{mon}",
+    },
+    "tr": {
+        "nav.home": "\U0001f3e0 Ana Sayfa",
+        "nav.clips": "\U0001f3ac Kayıtlar",
+        "nav.settings": "\u2699\ufe0f Ayarlar",
+        "badge.live": "CANLI",
+        "badge.off": "KAPALI",
+        "settings.title": "\u2699\ufe0f  Ayarlar",
+        "settings.save": "\u2713  Ayarları kaydet",
+        "settings.language": "Dil",
+        "settings.lang_en": "English",
+        "settings.lang_tr": "Türkçe",
+        "sec.display": "\U0001f5a5\ufe0f  Ekran",
+        "sec.recording": "\U0001f3a5  Kayıt",
+        "sec.audio": "\U0001f3a7  Ses",
+        "sec.hotkeys": "\u2328\ufe0f  Kısayollar",
+        "sec.output": "\U0001f4c2  Kayıt klasörü",
+        "sec.indicator": "\U0001f534  Gösterge",
+        "sec.hardware": "\U0001f4ca  Donanım paneli",
+        "sec.startup": "\U0001f680  Başlangıç",
+        "disp.capture": "Yakalanacak ekran",
+        "rec.encoder": "Video kodlayıcı",
+        "rec.buffer": "Yuvarlanan tampon (dakika)",
+        "rec.buffer.hint": "Bu kadar dakika bellekte tutulur; Kaydet ile aynı süre dosyaya yazılır.",
+        "rec.fps": "Hedef FPS",
+        "rec.fps.hint": "Yüksek = daha akıcı, daha çok CPU/GPU kullanır.",
+        "rec.quality": "Video kalitesi",
+        "rec.quality.hint": "Düşük sayı = daha net görüntü ve daha büyük dosya. 18 en iyi, 40 daha küçük dosya.",
+        "enc.auto": "Otomatik (varsa ekran kartı)",
+        "enc.nvenc": "Yalnızca NVIDIA NVENC",
+        "enc.cpu": "İşlemci H.264",
+        "panel.side": "Panel tarafı",
+        "panel.left": "Sol kenar",
+        "panel.right": "Sağ kenar",
+        "audio.mic": "\U0001f3a7  Mikrofon",
+        "audio.sys": "\U0001f50a  Sistem sesi",
+        "audio.loading": "  Ses aygıtları yükleniyor…",
+        "audio.refresh": "\u27f3 Yenile",
+        "audio.found": "  {n} aygıt bulundu.",
+        "audio.limited": "  Az aygıt listelendi. Yenile deneyin.",
+        "hk.save": "Replay kaydet (kısayol)",
+        "hk.toggle": "Yakalamayı duraklat / sürdür (kısayol)",
+        "hk.panel": "Paneli aç / kapat (kısayol)",
+        "out.folder": "Kayıt dosyaları klasörü",
+        "out.browse": "Gözat",
+        "ind.rec": "Küçük REC noktası (sürükleyerek taşı; konum kaydedilir)",
+        "hw.cpu": "CPU kullanımını göster",
+        "hw.ram": "RAM kullanımını göster",
+        "hw.gpu": "GPU kullanımını göster (NVIDIA: nvidia-smi)",
+        "su.on": "\u2713 Windows ile başlat",
+        "su.off": "\u2715 Başlangıçta çalışmıyor",
+        "su.toggle": "Değiştir",
+        "msg.settings_saved": "Ayarlar kaydedildi. Yakalama yeniden başlatılıyor…",
+        "home.gallery": "Galeri",
+        "home.gallery_all": "Tümü \u203a",
+        "home.gallery_empty": "\U0001f4c2  Klibi kaydetmek için kayıt kısayoluna bas.",
+        "home.hotkey": "Kısayol: {hk}",
+        "home.save": "Replay klibi kaydet",
+        "home.direct": "Düz kayıt (MP4)",
+        "home.direct_sub": "Tampondan bağımsız normal kayıt. Durdurmak için tekrar dokun.",
+        "home.direct_stop": "Düz kaydı durdur",
+        "home.direct_stop_sub": "MP4 çıktı klasörüne yazılır",
+        "home.cap_stop": "Yakalamayı duraklat",
+        "home.cap_start": "Yakalamayı sürdür",
+        "home.cap_sub": "Yuvarlanan tampon aç/kapa",
+        "home.recordings": "Kayıtlar",
+        "home.recordings_sub": "Klasörü aç ve tam liste",
+        "home.settings": "Ayarlar",
+        "home.settings_sub": "Ses, kalite, kısayollar, dil",
+        "home.stat_line": "Hedef {fps} FPS  \u2022  Ekran #{mon}",
+    },
+}
+
+
+def lang_code() -> str:
+    c = (config.get("ui_language") or "en").lower()
+    return c if c in _MSG else "en"
+
+
+def t(key: str, **kwargs) -> str:
+    lc = lang_code()
+    s = _MSG.get(lc, _MSG["en"]).get(key)
+    if s is None:
+        s = _MSG["en"].get(key, key)
+    if kwargs:
+        try:
+            return s.format(**kwargs)
+        except Exception:
+            return s
+    return s
+
+
+def encoder_labels():
+    return [t("enc.auto"), t("enc.nvenc"), t("enc.cpu")]
+
+
+def panel_side_labels():
+    return [t("panel.left"), t("panel.right")]

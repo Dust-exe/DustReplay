@@ -8,6 +8,7 @@ import pystray
 from PIL import Image, ImageDraw
 
 import config
+import i18n
 import startup
 from overlay import RecordingOverlay
 from page_home import HomePage
@@ -79,13 +80,19 @@ class AppWindow(ctk.CTk):
         self._clear_global_hotkeys()
         try:
             self._hk_save = kb.add_hotkey(
-                config.get("hotkey_save"), self.do_save, suppress=False
+                config.get("hotkey_save"),
+                lambda: self.after(0, self._do_save_impl),
+                suppress=False,
             )
             self._hk_toggle = kb.add_hotkey(
-                config.get("hotkey_toggle"), self.do_toggle, suppress=False
+                config.get("hotkey_toggle"),
+                lambda: self.after(0, self._do_toggle_impl),
+                suppress=False,
             )
             self._hk_panel = kb.add_hotkey(
-                config.get("panel_hotkey"), self.toggle_panel, suppress=False
+                config.get("panel_hotkey"),
+                lambda: self.after(0, self._toggle_panel_main),
+                suppress=False,
             )
             logger.info("Global hotkeys registered.")
         except Exception as e:
@@ -156,11 +163,12 @@ class AppWindow(ctk.CTk):
         nav = ctk.CTkFrame(p, fg_color=_SBG, corner_radius=0, height=40)
         nav.pack(fill="x")
         nav.pack_propagate(False)
-        for label, key in (
-            ("\U0001f3e0 Home", "home"),
-            ("\U0001f3ac Clips", "recordings"),
-            ("\u2699\ufe0f Settings", "settings"),
+        for label_key, key in (
+            ("nav.home", "home"),
+            ("nav.clips", "recordings"),
+            ("nav.settings", "settings"),
         ):
+            label = i18n.t(label_key)
             b = ctk.CTkButton(
                 nav,
                 text=label,
@@ -181,12 +189,13 @@ class AppWindow(ctk.CTk):
         self.content.pack(fill="both", expand=True)
         self.pages = {
             "home": HomePage(self.content, app=self),
-            "recordings": RecordingsPage(self.content),
+            "recordings": RecordingsPage(self.content, app=self),
             "settings": SettingsPage(self.content, app=self),
         }
         for pg in self.pages.values():
             pg.place(relx=0, rely=0, relwidth=1, relheight=1)
         self.sp("home")
+        self.refresh_ui_language()
 
         from version import __version__
 
@@ -255,37 +264,75 @@ class AppWindow(ctk.CTk):
                 self._panel.unbind("<FocusOut>")
             except Exception:
                 pass
+            try:
+                self._panel.attributes("-alpha", 1.0)
+            except Exception:
+                pass
             self._panel.withdraw()
         self._panel_visible = False
 
-    def toggle_panel(self):
+    def close_panel(self):
+        self._hide_panel()
+
+    def toggle_panel(self, event=None):
+        """Always run panel show/hide on the Tk main thread (hotkeys call from a worker thread)."""
+        self.after(0, self._toggle_panel_main)
+
+    def _toggle_panel_main(self):
         if not self._panel:
             return
         if self._panel_visible:
             self._hide_panel()
-        else:
-            import tkinter as tk
+            return
+        import tkinter as tk
 
-            sw = self.winfo_screenwidth()
-            sh = self.winfo_screenheight()
-            self._destroy_panel_backdrop()
-            bd = tk.Toplevel(self)
-            bd.overrideredirect(True)
-            bd.attributes("-alpha", 0.12)
-            bd.configure(bg="#000010")
-            bd.geometry(f"{sw}x{sh}+0+0")
-            bd.attributes("-topmost", True)
-            bd.bind("<Button-1>", self._close_panel_from_outside)
-            self._panel_backdrop = bd
+        sw = self.winfo_screenwidth()
+        sh = self.winfo_screenheight()
+        self._destroy_panel_backdrop()
+        bd = tk.Toplevel(self)
+        bd.overrideredirect(True)
+        bd.attributes("-alpha", 0.0)
+        bd.configure(bg="#000010")
+        bd.geometry(f"{sw}x{sh}+0+0")
+        bd.attributes("-topmost", True)
+        bd.bind("<Button-1>", self._close_panel_from_outside)
+        self._panel_backdrop = bd
 
-            x = self._panel_x()
-            self._panel.geometry(f"{_PANEL_W}x{sh}+{x}+0")
-            self._panel.deiconify()
-            self._panel.lift()
-            self._panel.attributes("-topmost", True)
-            self._panel.focus_force()
-            self._panel.bind("<FocusOut>", self._on_panel_focus_out)
-            self._panel_visible = True
+        def _fade_bd(step=0):
+            a = min(0.14, (step + 1) * 0.035)
+            try:
+                bd.attributes("-alpha", a)
+            except Exception:
+                return
+            if a < 0.135:
+                bd.after(14, lambda: _fade_bd(step + 1))
+
+        _fade_bd(0)
+
+        x = self._panel_x()
+        self._panel.geometry(f"{_PANEL_W}x{sh}+{x}+0")
+        self._panel.update_idletasks()
+        self._panel.deiconify()
+        self._panel.lift()
+        self._panel.attributes("-topmost", True)
+        try:
+            self._panel.attributes("-alpha", 0.0)
+        except Exception:
+            pass
+
+        def _fade_panel(pa=0.0):
+            np = min(1.0, pa + 0.2)
+            try:
+                self._panel.attributes("-alpha", np)
+            except Exception:
+                pass
+            if np < 1.0:
+                self._panel.after(18, lambda: _fade_panel(np))
+
+        _fade_panel(0.0)
+        self._panel.focus_force()
+        self._panel.bind("<FocusOut>", self._on_panel_focus_out)
+        self._panel_visible = True
 
     def _btray(self):
         ph = str(config.get("panel_hotkey")).upper()
@@ -358,7 +405,11 @@ class AppWindow(ctk.CTk):
                 )
             if self._badge:
                 self._badge.configure(
-                    text="LIVE" if self._recording else "OFF",
+                    text=(
+                        i18n.t("badge.live")
+                        if self._recording
+                        else i18n.t("badge.off")
+                    ),
                     fg_color="#e03030" if self._recording else "#444",
                 )
             if self._tray_icon:
@@ -485,7 +536,11 @@ class AppWindow(ctk.CTk):
         )
         self.after(800, lambda: self.pages["home"].refresh_gallery())
 
-    def do_save(self):
+    def do_save(self, event=None):
+        """Hotkeys and UI may call from non-Tk threads; always marshal to main thread."""
+        self.after(0, self._do_save_impl)
+
+    def _do_save_impl(self):
         if not self.pages:
             return
         hp = self.pages["home"]
@@ -505,10 +560,9 @@ class AppWindow(ctk.CTk):
                     f"\u2713  Saved  {os.path.basename(p)}", color="#44ee88", duration=4000
                 ),
             )
-            try:
-                self.recorder.reset_buffer()
-            except Exception:
-                pass
+            # Do NOT reset_buffer here: it deletes ALL seg_*.mp4 including the new
+            # rolling buffer ffmpeg just started after cut_and_get_segments.
+            # saver.py removes only the merged segment files after export.
             try:
                 self.after(1500, hp.refresh_gallery)
             except Exception:
@@ -525,7 +579,10 @@ class AppWindow(ctk.CTk):
             self.recorder, on_done=ok, on_error=er, watchdog=self.watchdog
         )
 
-    def do_toggle(self):
+    def do_toggle(self, event=None):
+        self.after(0, self._do_toggle_impl)
+
+    def _do_toggle_impl(self):
         if self.recorder.manual_recording_active():
             if self.pages:
                 self.pages["home"].show_info(
@@ -580,11 +637,20 @@ class AppWindow(ctk.CTk):
             if self.pages:
                 self.pages["home"].set_recording(True)
 
+    def refresh_ui_language(self):
+        if not getattr(self, "_nb", None):
+            return
+        self._nb["home"].configure(text=i18n.t("nav.home"))
+        self._nb["recordings"].configure(text=i18n.t("nav.clips"))
+        self._nb["settings"].configure(text=i18n.t("nav.settings"))
+        if self.pages.get("home") and hasattr(self.pages["home"], "refresh_home_texts"):
+            self.pages["home"].refresh_home_texts()
+
     def on_settings_saved(self):
         if self.pages:
             self.pages["home"].refresh_hotkeys()
             self.pages["home"].show_info(
-                "\u2713 Settings saved. Restarting capture…", color="#aa88ff"
+                i18n.t("msg.settings_saved"), color="#aa88ff"
             )
         if self.overlay:
             self.overlay.toggle_enabled(config.get("overlay_enabled"))

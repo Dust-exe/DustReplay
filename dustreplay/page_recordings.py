@@ -11,8 +11,9 @@ _PD = "#0e0018"
 
 
 class RecordingsPage(ctk.CTkFrame):
-    def __init__(self, master):
+    def __init__(self, master, app=None):
         super().__init__(master, fg_color="transparent")
+        self.app = app
         self._rows = []
         self._build()
 
@@ -34,10 +35,7 @@ class RecordingsPage(ctk.CTkFrame):
             hover_color="#3d1080",
             border_width=1,
             border_color=_P,
-            command=lambda: (
-                os.makedirs(config.get("output_dir"), exist_ok=True),
-                subprocess.Popen(["explorer", config.get("output_dir")]),
-            ),
+            command=self._open_folder,
         ).pack(side="right")
         ctk.CTkButton(
             top,
@@ -137,6 +135,17 @@ class RecordingsPage(ctk.CTkFrame):
             corner_radius=8,
             border_width=1,
             border_color=_P,
-            command=lambda: os.startfile(fp),
+            command=lambda: self._play_file(fp),
         ).place(relx=1.0, rely=0.5, anchor="e", x=-72)
         return r
+
+    def _open_folder(self):
+        if self.app and hasattr(self.app, "close_panel"):
+            self.app.close_panel()
+        os.makedirs(config.get("output_dir"), exist_ok=True)
+        subprocess.Popen(["explorer", config.get("output_dir")])
+
+    def _play_file(self, fp):
+        if self.app and hasattr(self.app, "close_panel"):
+            self.app.close_panel()
+        os.startfile(fp)

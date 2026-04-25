@@ -1,7 +1,10 @@
-"""Live system / capture stats (optional metrics from Settings)."""
+"""Frameless semi-transparent hardware overlay (CPU / RAM / GPU)."""
+
+from __future__ import annotations
 
 import logging
-import os
+import subprocess
+import sys
 import time
 
 import customtkinter as ctk
@@ -15,47 +18,197 @@ try:
 except ImportError:
     psutil = None
 
+_BG = "#0a0612"
+_FG = "#e8e0ff"
+_AC = "#aa77ff"
+
+
+def _subprocess_flags():
+    if sys.platform == "win32":
+        try:
+            return subprocess.CREATE_NO_WINDOW
+        except Exception:
+            pass
+    return 0
+
+
+def _query_nvidia_gpu() -> str | None:
+    try:
+        r = subprocess.run(
+            [
+                "nvidia-smi",
+                "--query-gpu=utilization.gpu",
+                "--format=csv,noheader,nounits",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            creationflags=_subprocess_flags(),
+        )
+        if r.returncode != 0 or not (r.stdout or "").strip():
+            return None
+        line = (r.stdout or "").strip().splitlines()[0].strip()
+        pct = float(line)
+        return f"{int(round(pct))}%"
+    except FileNotFoundError:
+        return None
+    except Exception as e:
+        logger.debug("nvidia-smi: %s", e)
+        return None
+
 
 class StatsWindow(ctk.CTkToplevel):
+    """Borderless, draggable, topmost overlay with live CPU / RAM / GPU."""
+
+    _W = 216
+    _H = 118
+
     def __init__(self, master, recorder, app_ref):
         super().__init__(master)
         self.recorder = recorder
         self._app = app_ref
-        self.title("DustReplay — Live stats")
-        self.geometry("320x420")
-        self.configure(fg_color="#08080e")
+        self._tick_id = None
+        self._gpu_cache = ""
+        self._gpu_cache_at = 0.0
+        self._drag_offset = None
+
+        self.overrideredirect(True)
         self.attributes("-topmost", True)
+        try:
+            a = float(config.get("stats_overlay_alpha") or 0.88)
+            a = max(0.35, min(1.0, a))
+        except Exception:
+            a = 0.88
+        self.attributes("-alpha", a)
+
+        self.configure(fg_color=_BG)
         self.resizable(False, False)
+        self.minsize(self._W, self._H)
+        self.maxsize(self._W, self._H)
 
-        ctk.CTkLabel(
-            self,
-            text="Live statistics",
-            font=ctk.CTkFont(size=16, weight="bold"),
-            text_color="#9933ff",
-        ).pack(pady=(14, 8))
+        self._place_initial_geometry()
 
-        self._body = ctk.CTkScrollableFrame(self, fg_color="#0d0d14", corner_radius=8)
-        self._body.pack(fill="both", expand=True, padx=12, pady=(0, 12))
+        outer = ctk.CTkFrame(self, fg_color=_BG, corner_radius=10)
+        outer.pack(fill="both", expand=True, padx=2, pady=2)
+
+        hdr = ctk.CTkFrame(outer, fg_color="transparent", height=22)
+        hdr.pack(fill="x", padx=6, pady=(6, 2))
+        hdr.pack_propagate(False)
+
+        self._hdr_title = ctk.CTkLabel(
+            hdr,
+            text="Hardware",
+            font=ctk.CTkFont(size=11, weight="bold"),
+            text_color=_AC,
+            anchor="w",
+        )
+        self._hdr_title.pack(side="left")
 
         ctk.CTkButton(
-            self,
-            text="Close",
-            command=self.destroy,
-            fg_color="#2a004a",
-            hover_color="#6622cc",
-            width=120,
-        ).pack(pady=(0, 10))
+            hdr,
+            text="\u2715",
+            width=22,
+            height=20,
+            font=ctk.CTkFont(size=12),
+            fg_color="#2a1030",
+            hover_color="#552266",
+            corner_radius=4,
+            command=self._close,
+        ).pack(side="right")
 
-        self._labels = {}
-        self._tick_id = None
-        self._enc_probe = None
-        self._enc_probe_at = 0.0
-        self.protocol("WM_DELETE_WINDOW", self.destroy)
+        self._body = ctk.CTkFrame(outer, fg_color="transparent")
+        self._body.pack(fill="both", expand=True, padx=8, pady=(0, 8))
+
+        self._lbl_cpu = self._metric_row(0, "CPU")
+        self._lbl_ram = self._metric_row(1, "RAM")
+        self._lbl_gpu = self._metric_row(2, "GPU")
+
+        for w in (outer, self._body, hdr, self._hdr_title):
+            w.bind("<ButtonPress-1>", self._on_drag_start)
+            w.bind("<B1-Motion>", self._on_drag_motion)
+            w.bind("<ButtonRelease-1>", self._on_drag_end)
+
+        self.protocol("WM_DELETE_WINDOW", self._close)
         self._schedule_tick()
+
+    def _metric_row(self, row: int, name: str):
+        fr = ctk.CTkFrame(self._body, fg_color="transparent")
+        fr.grid(row=row, column=0, sticky="ew", pady=2)
+        self._body.grid_columnconfigure(0, weight=1)
+        nm = ctk.CTkLabel(
+            fr,
+            text=name,
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color=_FG,
+            width=40,
+            anchor="w",
+        )
+        nm.pack(side="left")
+        val = ctk.CTkLabel(
+            fr,
+            text="--",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            text_color=_AC,
+            anchor="e",
+        )
+        val.pack(side="right", fill="x", expand=True)
+        for w in (fr, nm, val):
+            w.bind("<ButtonPress-1>", self._on_drag_start)
+            w.bind("<B1-Motion>", self._on_drag_motion)
+            w.bind("<ButtonRelease-1>", self._on_drag_end)
+        return val
+
+    def _place_initial_geometry(self):
+        x = config.get("stats_overlay_x")
+        y = config.get("stats_overlay_y")
+        try:
+            self.update_idletasks()
+            sw = self.winfo_screenwidth()
+            sh = self.winfo_screenheight()
+            if x is None or y is None:
+                gx = sw - self._W - 20
+                gy = sh - self._H - 96
+            else:
+                gx = int(x)
+                gy = int(y)
+            gx = max(0, min(gx, max(0, sw - self._W)))
+            gy = max(0, min(gy, max(0, sh - self._H)))
+            self.geometry(f"{self._W}x{self._H}+{gx}+{gy}")
+        except Exception:
+            self.geometry(f"{self._W}x{self._H}+40+40")
+
+    def _on_drag_start(self, event):
+        self._drag_offset = (event.x_root - self.winfo_x(), event.y_root - self.winfo_y())
+
+    def _on_drag_motion(self, event):
+        if not self._drag_offset:
+            return
+        ox, oy = self._drag_offset
+        nx = event.x_root - ox
+        ny = event.y_root - oy
+        self.geometry(f"{self._W}x{self._H}+{nx}+{ny}")
+
+    def _on_drag_end(self, event):
+        self._drag_offset = None
+        try:
+            config.set("stats_overlay_x", self.winfo_x())
+            config.set("stats_overlay_y", self.winfo_y())
+            config.save()
+        except Exception as e:
+            logger.debug("stats overlay pos save: %s", e)
+
+    def _close(self):
+        try:
+            config.set("stats_overlay_x", self.winfo_x())
+            config.set("stats_overlay_y", self.winfo_y())
+            config.save()
+        except Exception:
+            pass
+        self.destroy()
 
     def _schedule_tick(self):
         self._refresh()
-        self._tick_id = self.after(900, self._schedule_tick)
+        self._tick_id = self.after(1000, self._schedule_tick)
 
     def destroy(self):
         if self._tick_id:
@@ -66,114 +219,46 @@ class StatsWindow(ctk.CTkToplevel):
             self._tick_id = None
         super().destroy()
 
+    def _gpu_text(self) -> str:
+        if not config.get("stats_show_gpu"):
+            return ""
+        now = time.time()
+        if now - self._gpu_cache_at < 1.5 and self._gpu_cache:
+            return self._gpu_cache
+        g = _query_nvidia_gpu()
+        self._gpu_cache_at = now
+        if g:
+            self._gpu_cache = g
+            return g
+        self._gpu_cache = "--"
+        return "--"
+
     def _refresh(self):
         if not self.winfo_exists():
             return
-        lines = []
-
-        def add(key, title, value):
-            if not config.get(key):
-                return
-            lines.append((title, value))
-
-        fps = str(config.get("fps"))
-        mon = int(config.get("monitor_index") or 1)
-        buf = self.recorder.buffer_seconds_filled()
-        bmax = int(config.get("buffer_minutes") or 1) * 60
-        buf_pct = min(100, int(100 * buf / bmax)) if bmax else 0
-
-        add("stats_show_target_fps", "Target capture FPS", fps)
-        add("stats_show_display", "Display index", str(mon))
-
-        if config.get("stats_show_encoder"):
-            mode = (config.get("video_encoder") or "auto").lower()
-            enc_line = f"Setting: {mode}"
-            now = time.time()
-            if now - self._enc_probe_at > 25:
-                self._enc_probe_at = now
-                try:
-                    import encoding
-
-                    ff = os.path.join(config.APPDATA_DIR, "ffmpeg", "ffmpeg.exe")
-                    if os.path.isfile(ff):
-                        self._enc_probe = (
-                            "NVENC" if encoding.use_nvenc(ff) else "CPU (libx264)"
-                        )
-                    else:
-                        self._enc_probe = "?"
-                except Exception:
-                    self._enc_probe = "?"
-            if self._enc_probe:
-                enc_line += f"  → pipeline: {self._enc_probe}"
-            lines.append(("Video encoder", enc_line))
-
-        add(
-            "stats_show_buffer",
-            "Buffer fill",
-            f"{buf // 60}:{buf % 60:02d} / {bmax // 60}:{bmax % 60:02d}  ({buf_pct}%)",
-        )
-
-        alive = self.recorder.is_alive()
-        manual = self.recorder.manual_recording_active()
-        state = (
-            "Manual file recording"
-            if manual
-            else ("Rolling buffer ON" if alive else "Capture OFF")
-        )
-        add("stats_show_capture_state", "Capture", state)
 
         if psutil:
             try:
-                add(
-                    "stats_show_cpu",
-                    "CPU usage",
-                    f"{psutil.cpu_percent(interval=None):.0f}%",
-                )
+                cpu = f"{psutil.cpu_percent(interval=None):.0f}%"
                 vm = psutil.virtual_memory()
-                add(
-                    "stats_show_ram",
-                    "RAM usage",
-                    f"{vm.percent:.0f}%  ({vm.used // (1024**3)} / {vm.total // (1024**3)} GiB)",
-                )
-                du = psutil.disk_usage(os.path.splitdrive(config.get("output_dir") or "C:")[0] + "\\")
-                add(
-                    "stats_show_disk",
-                    "Disk free (output drive)",
-                    f"{du.free // (1024**3)} GiB free",
-                )
+                ram = f"{vm.percent:.0f}%"
             except Exception as e:
-                logger.debug("psutil read: %s", e)
+                logger.debug("psutil: %s", e)
+                cpu, ram = "?", "?"
         else:
-            if config.get("stats_show_cpu") or config.get("stats_show_ram"):
-                lines.append(("psutil", "Install psutil for CPU/RAM (pip install psutil)"))
+            cpu = ram = "install psutil"
 
-        add("stats_show_uptime", "App uptime (approx)", f"{int(time.time() - self._app._start_time)} s")
+        if config.get("stats_show_cpu"):
+            self._lbl_cpu.configure(text=cpu)
+        else:
+            self._lbl_cpu.configure(text="off")
 
-        for w in self._body.winfo_children():
-            w.destroy()
+        if config.get("stats_show_ram"):
+            self._lbl_ram.configure(text=ram)
+        else:
+            self._lbl_ram.configure(text="off")
 
-        for title, value in lines:
-            fr = ctk.CTkFrame(self._body, fg_color="#151520", corner_radius=6)
-            fr.pack(fill="x", pady=4, padx=4)
-            ctk.CTkLabel(
-                fr,
-                text=title,
-                font=ctk.CTkFont(size=11, weight="bold"),
-                text_color="#aa88dd",
-                anchor="w",
-            ).pack(anchor="w", padx=10, pady=(6, 0))
-            ctk.CTkLabel(
-                fr,
-                text=value,
-                font=ctk.CTkFont(size=12),
-                text_color="#e8e8f0",
-                anchor="w",
-                wraplength=280,
-            ).pack(anchor="w", padx=10, pady=(0, 8))
-
-        if not lines:
-            ctk.CTkLabel(
-                self._body,
-                text="No metrics enabled.\nOpen Settings → Live statistics.",
-                text_color="#666688",
-            ).pack(pady=20)
+        if config.get("stats_show_gpu"):
+            self._lbl_gpu.configure(text=self._gpu_text())
+        else:
+            self._lbl_gpu.configure(text="off")

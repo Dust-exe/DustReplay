@@ -13,7 +13,6 @@ _CFG_FILE = os.path.join(APPDATA_DIR, "settings.json")
 # monitor_index: 1-based index into DXGI / EnumDisplayMonitors order (1 = first display)
 _DEFAULTS = {
     "buffer_minutes": 20,
-    "save_minutes": 2,
     "segment_seconds": 10,
     "fps": 30,
     "quality": 28,
@@ -34,16 +33,16 @@ _DEFAULTS = {
     "overlay_x": 20,
     "overlay_y": 20,
     "overlay_monitor": 0,
-    # Live stats window (which lines to show)
-    "stats_show_target_fps": True,
-    "stats_show_display": True,
-    "stats_show_encoder": True,
-    "stats_show_buffer": True,
-    "stats_show_capture_state": True,
+    # Hardware stats overlay (Home → Statistics): CPU / RAM / GPU only
     "stats_show_cpu": True,
     "stats_show_ram": True,
-    "stats_show_disk": False,
-    "stats_show_uptime": False,
+    "stats_show_gpu": True,
+    # Saved overlay position (pixels); null = place in corner on first open
+    "stats_overlay_x": None,
+    "stats_overlay_y": None,
+    "stats_overlay_alpha": 0.88,
+    # UI language: en (default) | tr
+    "ui_language": "en",
 }
 
 _cfg = {}
