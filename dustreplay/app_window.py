@@ -485,8 +485,8 @@ class AppWindow(ctk.CTk):
 
     def open_stats_window(self):
         try:
-            if self._stats_win and self._stats_win.winfo_exists():
-                self._stats_win.focus_force()
+            if self._stats_win is not None and self._stats_win.winfo_exists():
+                self._stats_win.destroy()
                 return
         except Exception:
             self._stats_win = None

@@ -78,6 +78,13 @@ _MSG = {
         "home.settings": "Settings",
         "home.settings_sub": "Audio, quality, hotkeys, language",
         "home.stat_line": "Target {fps} FPS  \u2022  Display #{mon}",
+        "home.stats_title": "Statistics",
+        "home.stats_hint": "Toggle live panel \u203a",
+        "stats.title": "Hardware",
+        "stats.cpu": "CPU",
+        "stats.ram": "RAM",
+        "stats.gpu": "GPU",
+        "stats.fps": "FPS",
     },
     "tr": {
         "nav.home": "\U0001f3e0 Ana Sayfa",
@@ -154,6 +161,13 @@ _MSG = {
         "home.settings": "Ayarlar",
         "home.settings_sub": "Ses, kalite, kısayollar, dil",
         "home.stat_line": "Hedef {fps} FPS  \u2022  Ekran #{mon}",
+        "home.stats_title": "\u0130statistik",
+        "home.stats_hint": "Canl\u0131 panel a\u00e7/kapa \u203a",
+        "stats.title": "Donan\u0131m",
+        "stats.cpu": "CPU",
+        "stats.ram": "RAM",
+        "stats.gpu": "GPU",
+        "stats.fps": "FPS",
     },
 }
 

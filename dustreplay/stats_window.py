@@ -1,8 +1,4 @@
-"""Frameless compact hardware overlay: CPU / RAM / GPU / FPS, corner snap only.
-
-Note: Win32 ``-transparentcolor`` + CustomTkinter ``transparent`` fills is unreliable
-and can render as a broken gray slab over the main UI — use solid fg + ``-alpha`` only.
-"""
+"""Frameless hardware overlay: CPU / RAM / GPU as bar graphs, FPS + sparkline."""
 
 from __future__ import annotations
 
@@ -10,10 +6,13 @@ import logging
 import subprocess
 import sys
 import time
+import tkinter as tk
+from collections import deque
 
 import customtkinter as ctk
 
 import config
+import i18n
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +22,10 @@ except ImportError:
     psutil = None
 
 _BG = "#0a0612"
+_ROW = "#120818"
 _LBL = "#ffffff"
 _VAL = "#aa77ff"
+_BAR_BG = "#2a1a38"
 _CORNERS = ("tl", "tr", "bl", "br")
 
 
@@ -37,7 +38,8 @@ def _subprocess_flags():
     return 0
 
 
-def _query_nvidia_gpu() -> str | None:
+def _query_nvidia_gpu_util() -> float | None:
+    """GPU utilization 0..100, or None if unavailable."""
     try:
         r = subprocess.run(
             [
@@ -53,8 +55,7 @@ def _query_nvidia_gpu() -> str | None:
         if r.returncode != 0 or not (r.stdout or "").strip():
             return None
         line = (r.stdout or "").strip().splitlines()[0].strip()
-        pct = float(line)
-        return f"{int(round(pct))}%"
+        return float(line)
     except FileNotFoundError:
         return None
     except Exception as e:
@@ -63,18 +64,19 @@ def _query_nvidia_gpu() -> str | None:
 
 
 class StatsWindow(ctk.CTkToplevel):
-    """Small borderless overlay; position = screen corner only (no drag)."""
+    """Small borderless overlay; corner snap. Close from Home (Statistics) again — no X button."""
 
-    _W = 168
-    _H = 132
+    _W = 256
+    _H = 232
 
     def __init__(self, master, recorder, app_ref):
         super().__init__(master)
         self.recorder = recorder
         self._app = app_ref
         self._tick_id = None
-        self._gpu_cache = ""
+        self._gpu_cache_v: float | None = None
         self._gpu_cache_at = 0.0
+        self._fps_hist: deque[int] = deque(maxlen=48)
 
         self.overrideredirect(True)
         self.attributes("-topmost", True)
@@ -93,39 +95,25 @@ class StatsWindow(ctk.CTkToplevel):
         outer = ctk.CTkFrame(self, fg_color=_BG, corner_radius=0, border_width=0)
         outer.pack(fill="both", expand=True, padx=0, pady=0)
 
-        hdr = ctk.CTkFrame(outer, fg_color="transparent", height=20)
-        hdr.pack(fill="x", padx=6, pady=(4, 0))
+        hdr = ctk.CTkFrame(outer, fg_color=_BG, height=22)
+        hdr.pack(fill="x", padx=8, pady=(6, 2))
         hdr.pack_propagate(False)
-
-        self._hdr_title = ctk.CTkLabel(
+        ctk.CTkLabel(
             hdr,
-            text="Hardware",
-            font=ctk.CTkFont(size=10, weight="bold"),
+            text=i18n.t("stats.title"),
+            font=ctk.CTkFont(size=11, weight="bold"),
             text_color=_LBL,
             anchor="w",
-        )
-        self._hdr_title.pack(side="left")
+        ).pack(side="left")
 
-        ctk.CTkButton(
-            hdr,
-            text="\u2715",
-            width=18,
-            height=18,
-            font=ctk.CTkFont(size=11),
-            fg_color="#15151c",
-            hover_color="#252530",
-            corner_radius=3,
-            text_color="#cccccc",
-            command=self._close,
-        ).pack(side="right")
+        self._body = ctk.CTkFrame(outer, fg_color=_BG)
+        self._body.pack(fill="both", expand=True, padx=8, pady=(0, 8))
+        self._body.grid_columnconfigure(0, weight=1)
 
-        self._body = ctk.CTkFrame(outer, fg_color="transparent")
-        self._body.pack(fill="both", expand=True, padx=6, pady=(3, 4))
-
-        self._lbl_cpu = self._metric_row(0, "CPU")
-        self._lbl_ram = self._metric_row(1, "RAM")
-        self._lbl_gpu = self._metric_row(2, "GPU")
-        self._lbl_fps = self._metric_row(3, "Client FPS", fps_style=True)
+        self._bar_cpu, self._txt_cpu = self._bar_row(0, i18n.t("stats.cpu"))
+        self._bar_ram, self._txt_ram = self._bar_row(1, i18n.t("stats.ram"))
+        self._bar_gpu, self._txt_gpu = self._bar_row(2, i18n.t("stats.gpu"))
+        self._build_fps_row(3)
 
         self.protocol("WM_DELETE_WINDOW", self._close)
         self._apply_corner_geometry()
@@ -136,35 +124,117 @@ class StatsWindow(ctk.CTkToplevel):
         except Exception:
             pass
 
-    def _metric_row(self, row: int, name: str, fps_style: bool = False):
-        fr_bg = "#181020" if fps_style else "transparent"
-        fr = ctk.CTkFrame(
-            self._body,
-            fg_color=fr_bg,
-            border_width=1 if fps_style else 0,
-            border_color="#8060aa" if fps_style else "transparent",
-            corner_radius=4 if fps_style else 0,
-        )
-        fr.grid(row=row, column=0, sticky="ew", pady=1)
-        self._body.grid_columnconfigure(0, weight=1)
-        name_w = 86 if fps_style else 34
+    def _bar_row(self, row: int, title: str):
+        row_fr = ctk.CTkFrame(self._body, fg_color=_ROW, corner_radius=4)
+        row_fr.grid(row=row, column=0, sticky="ew", pady=3)
+        row_fr.grid_columnconfigure(1, weight=1)
+
         ctk.CTkLabel(
-            fr,
-            text=name,
+            row_fr,
+            text=title,
             font=ctk.CTkFont(size=10, weight="bold"),
             text_color=_LBL,
-            width=name_w,
+            width=36,
             anchor="w",
-        ).pack(side="left")
-        val = ctk.CTkLabel(
-            fr,
+        ).grid(row=0, column=0, padx=(8, 4), pady=6)
+
+        bar = ctk.CTkProgressBar(
+            row_fr,
+            height=10,
+            progress_color=_VAL,
+            fg_color=_BAR_BG,
+            corner_radius=3,
+        )
+        bar.grid(row=0, column=1, sticky="ew", padx=0, pady=6)
+        bar.set(0)
+
+        txt = ctk.CTkLabel(
+            row_fr,
             text="--",
-            font=ctk.CTkFont(size=11, weight="bold"),
+            font=ctk.CTkFont(size=10, weight="bold"),
             text_color=_VAL,
+            width=44,
             anchor="e",
         )
-        val.pack(side="right", fill="x", expand=True)
-        return val
+        txt.grid(row=0, column=2, padx=(4, 8), pady=6)
+        return bar, txt
+
+    def _build_fps_row(self, row: int):
+        fr = ctk.CTkFrame(self._body, fg_color=_ROW, corner_radius=4)
+        fr.grid(row=row, column=0, sticky="ew", pady=3)
+        fr.grid_columnconfigure(1, weight=1)
+
+        ctk.CTkLabel(
+            fr,
+            text=i18n.t("stats.fps"),
+            font=ctk.CTkFont(size=10, weight="bold"),
+            text_color=_LBL,
+            width=36,
+            anchor="w",
+        ).grid(row=0, column=0, rowspan=2, padx=(8, 4), pady=(8, 8), sticky="n")
+
+        self._fps_val = ctk.CTkLabel(
+            fr,
+            text="--",
+            font=ctk.CTkFont(size=18, weight="bold"),
+            text_color=_VAL,
+            anchor="w",
+        )
+        self._fps_val.grid(row=0, column=1, sticky="ew", padx=0, pady=(6, 0))
+
+        self._fps_canvas = tk.Canvas(
+            fr,
+            height=34,
+            bg=_ROW,
+            highlightthickness=0,
+            bd=0,
+        )
+        self._fps_canvas.grid(row=1, column=1, sticky="ew", padx=(0, 8), pady=(0, 6))
+        fr.bind("<Configure>", self._on_fps_canvas_configure)
+
+    def _on_fps_canvas_configure(self, event=None):
+        try:
+            self._fps_canvas.configure(width=max(self._fps_canvas.winfo_width(), 80))
+        except Exception:
+            pass
+
+    def _gpu_util_cached(self) -> float | None:
+        if not config.get("stats_show_gpu"):
+            return None
+        now = time.time()
+        if now - self._gpu_cache_at < 1.5 and self._gpu_cache_v is not None:
+            return self._gpu_cache_v
+        self._gpu_cache_at = now
+        self._gpu_cache_v = _query_nvidia_gpu_util()
+        return self._gpu_cache_v
+
+    def _draw_fps_sparkline(self):
+        cv = self._fps_canvas
+        try:
+            cv.delete("all")
+        except Exception:
+            return
+        hist = list(self._fps_hist)
+        if len(hist) < 2:
+            return
+        w = max(int(cv.winfo_width()), 40)
+        h = max(int(cv.winfo_height()), 20)
+        cap = max(max(hist), int(config.get("fps") or 60) * 2, 30)
+        pts = []
+        n = len(hist)
+        for i, v in enumerate(hist):
+            x = 2 + (i / max(n - 1, 1)) * (w - 4)
+            y = h - 4 - (min(v, cap) / cap) * (h - 8)
+            pts.append((x, y))
+        for i in range(1, len(pts)):
+            cv.create_line(
+                pts[i - 1][0],
+                pts[i - 1][1],
+                pts[i][0],
+                pts[i][1],
+                fill=_VAL,
+                width=2,
+            )
 
     def _apply_corner_geometry(self):
         try:
@@ -199,7 +269,7 @@ class StatsWindow(ctk.CTkToplevel):
             self._refresh()
         except Exception as e:
             logger.debug("stats refresh: %s", e)
-        self._tick_id = self.after(1000, self._schedule_tick)
+        self._tick_id = self.after(500, self._schedule_tick)
 
     def destroy(self):
         if self._tick_id:
@@ -216,55 +286,58 @@ class StatsWindow(ctk.CTkToplevel):
             pass
         super().destroy()
 
-    def _gpu_text(self) -> str:
-        if not config.get("stats_show_gpu"):
-            return ""
-        now = time.time()
-        if now - self._gpu_cache_at < 1.5 and self._gpu_cache:
-            return self._gpu_cache
-        g = _query_nvidia_gpu()
-        self._gpu_cache_at = now
-        if g:
-            self._gpu_cache = g
-            return g
-        self._gpu_cache = "--"
-        return "--"
-
     def _refresh(self):
         if not self.winfo_exists():
             return
 
         if psutil:
             try:
-                cpu = f"{psutil.cpu_percent(interval=None):.0f}%"
-                vm = psutil.virtual_memory()
-                ram = f"{vm.percent:.0f}%"
+                cpu_p = float(psutil.cpu_percent(interval=None))
+                ram_p = float(psutil.virtual_memory().percent)
             except Exception as e:
                 logger.debug("psutil: %s", e)
-                cpu, ram = "?", "?"
+                cpu_p, ram_p = 0.0, 0.0
         else:
-            cpu, ram = "--", "--"
+            cpu_p, ram_p = 0.0, 0.0
 
         if config.get("stats_show_cpu"):
-            self._lbl_cpu.configure(text=cpu)
+            self._bar_cpu.set(max(0.0, min(1.0, cpu_p / 100.0)))
+            self._txt_cpu.configure(text=f"{cpu_p:.0f}%")
         else:
-            self._lbl_cpu.configure(text="--")
+            self._bar_cpu.set(0)
+            self._txt_cpu.configure(text="--")
 
         if config.get("stats_show_ram"):
-            self._lbl_ram.configure(text=ram)
+            self._bar_ram.set(max(0.0, min(1.0, ram_p / 100.0)))
+            self._txt_ram.configure(text=f"{ram_p:.0f}%")
         else:
-            self._lbl_ram.configure(text="--")
+            self._bar_ram.set(0)
+            self._txt_ram.configure(text="--")
 
         if config.get("stats_show_gpu"):
-            self._lbl_gpu.configure(text=self._gpu_text())
+            gu = self._gpu_util_cached()
+            if gu is not None:
+                self._bar_gpu.set(max(0.0, min(1.0, gu / 100.0)))
+                self._txt_gpu.configure(text=f"{int(round(gu))}%")
+            else:
+                self._bar_gpu.set(0)
+                self._txt_gpu.configure(text="--")
         else:
-            self._lbl_gpu.configure(text="--")
+            self._bar_gpu.set(0)
+            self._txt_gpu.configure(text="--")
 
         if config.get("stats_show_fps"):
             try:
-                n = self.recorder.estimate_capture_fps()
-                self._lbl_fps.configure(text=str(n))
+                n = int(self.recorder.estimate_capture_fps())
             except Exception:
-                self._lbl_fps.configure(text="--")
+                n = 0
+            self._fps_val.configure(text=str(max(0, n)))
+            self._fps_hist.append(n)
+            self._draw_fps_sparkline()
         else:
-            self._lbl_fps.configure(text="--")
+            self._fps_val.configure(text="--")
+            self._fps_hist.clear()
+            try:
+                self._fps_canvas.delete("all")
+            except Exception:
+                pass

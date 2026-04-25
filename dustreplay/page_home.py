@@ -379,13 +379,16 @@ class HomePage(ctk.CTkFrame):
         ).pack(side="left", padx=(12, 2))
         ctk.CTkLabel(
             inn,
-            text="Statistics",
+            text=i18n.t("home.stats_title"),
             font=ctk.CTkFont(size=13, weight="bold"),
             text_color=_WH,
             anchor="w",
         ).pack(side="left", fill="y")
         ctk.CTkLabel(
-            inn, text="Open live panel \u203a", font=ctk.CTkFont(size=10), text_color=_GR
+            inn,
+            text=i18n.t("home.stats_hint"),
+            font=ctk.CTkFont(size=10),
+            text_color=_GR,
         ).pack(side="right", padx=12)
         for w in inn.winfo_children():
             w.bind("<Enter>", lambda e: hdr.configure(fg_color=_HV))
