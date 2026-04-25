@@ -114,7 +114,8 @@ try {
         $running = Get-Process -Name 'DustReplay' -ErrorAction SilentlyContinue
         if ($running) {
             $running | Stop-Process -Force -ErrorAction Stop
-            Start-Sleep -Milliseconds 500
+            # Give Windows a moment to release the EXE lock before Desktop copy.
+            Start-Sleep -Seconds 1
             Write-Host "  Closed running DustReplay.exe" -ForegroundColor DarkGray
         } else {
             Write-Host "  DustReplay is not running." -ForegroundColor DarkGray
@@ -127,14 +128,22 @@ try {
     Write-Host "  [5/5] Copy to Desktop..." -ForegroundColor Cyan
     $desk = [Environment]::GetFolderPath('Desktop')
     $deskExe = Join-Path $desk 'DustReplay.exe'
-    try {
-        Copy-Item $exe $deskExe -Force -ErrorAction Stop
-        $copied = $true
-    }
-    catch {
-        $copied = $false
-        Write-Host ""
-        Write-Warning "Could not copy to Desktop (close DustReplay.exe if it is running, then copy manually from dist)."
+    $copied = $false
+    for ($i = 1; $i -le 5; $i++) {
+        try {
+            Copy-Item $exe $deskExe -Force -ErrorAction Stop
+            $copied = $true
+            break
+        }
+        catch {
+            if ($i -ge 5) {
+                Write-Host ""
+                Write-Warning "Could not copy to Desktop after 5 tries. Close every DustReplay.exe (Task Manager), then copy manually from: $exe"
+                Write-Warning "Desktop path used: $deskExe"
+                break
+            }
+            Start-Sleep -Milliseconds 600
+        }
     }
 
     Write-Host ""
