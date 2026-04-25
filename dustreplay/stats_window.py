@@ -1,4 +1,8 @@
-"""Frameless compact hardware overlay: CPU / RAM / GPU / FPS, corner snap only."""
+"""Frameless compact hardware overlay: CPU / RAM / GPU / FPS, corner snap only.
+
+Note: Win32 ``-transparentcolor`` + CustomTkinter ``transparent`` fills is unreliable
+and can render as a broken gray slab over the main UI — use solid fg + ``-alpha`` only.
+"""
 
 from __future__ import annotations
 
@@ -22,7 +26,6 @@ _BG = "#0a0612"
 _LBL = "#ffffff"
 _VAL = "#aa77ff"
 _CORNERS = ("tl", "tr", "bl", "br")
-_TRANSPARENT_KEY = "#010203"
 
 
 def _subprocess_flags():
@@ -62,8 +65,8 @@ def _query_nvidia_gpu() -> str | None:
 class StatsWindow(ctk.CTkToplevel):
     """Small borderless overlay; position = screen corner only (no drag)."""
 
-    _W = 132
-    _H = 128
+    _W = 168
+    _H = 132
 
     def __init__(self, master, recorder, app_ref):
         super().__init__(master)
@@ -72,6 +75,11 @@ class StatsWindow(ctk.CTkToplevel):
         self._tick_id = None
         self._gpu_cache = ""
         self._gpu_cache_at = 0.0
+
+        try:
+            self.withdraw()
+        except Exception:
+            pass
 
         self.overrideredirect(True)
         self.attributes("-topmost", True)
@@ -82,19 +90,12 @@ class StatsWindow(ctk.CTkToplevel):
             a = 0.88
         self.attributes("-alpha", a)
 
-        self.configure(fg_color="transparent")
-        # Win32 only: color-key transparency for HUD-like floating text panel.
-        try:
-            if sys.platform == "win32":
-                self.configure(bg=_TRANSPARENT_KEY)
-                self.wm_attributes("-transparentcolor", _TRANSPARENT_KEY)
-        except Exception:
-            pass
+        self.configure(fg_color=_BG)
         self.resizable(False, False)
         self.minsize(self._W, self._H)
         self.maxsize(self._W, self._H)
 
-        outer = ctk.CTkFrame(self, fg_color="transparent", corner_radius=0, border_width=0)
+        outer = ctk.CTkFrame(self, fg_color=_BG, corner_radius=0, border_width=0)
         outer.pack(fill="both", expand=True, padx=0, pady=0)
 
         hdr = ctk.CTkFrame(outer, fg_color="transparent", height=20)
@@ -134,6 +135,12 @@ class StatsWindow(ctk.CTkToplevel):
         self.protocol("WM_DELETE_WINDOW", self._close)
         self._apply_corner_geometry()
         self._schedule_tick()
+        try:
+            self.deiconify()
+            self.lift()
+            self.attributes("-topmost", True)
+        except Exception:
+            pass
 
     def _metric_row(self, row: int, name: str, fps_style: bool = False):
         fr_bg = "#181020" if fps_style else "transparent"
@@ -146,12 +153,13 @@ class StatsWindow(ctk.CTkToplevel):
         )
         fr.grid(row=row, column=0, sticky="ew", pady=1)
         self._body.grid_columnconfigure(0, weight=1)
+        name_w = 86 if fps_style else 34
         ctk.CTkLabel(
             fr,
             text=name,
             font=ctk.CTkFont(size=10, weight="bold"),
             text_color=_LBL,
-            width=34,
+            width=name_w,
             anchor="w",
         ).pack(side="left")
         val = ctk.CTkLabel(
