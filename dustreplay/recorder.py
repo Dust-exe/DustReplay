@@ -455,6 +455,33 @@ class Recorder:
             return 0
         return int(time.time() - os.path.getmtime(segs[0]))
 
+    def estimate_capture_fps(self) -> int:
+        """Approximate live capture FPS from rolling-buffer segment file timing."""
+        try:
+            cfg_fps = max(1, int(config.get("fps") or 30))
+            seg_s = float(config.get("segment_seconds") or 10)
+            if seg_s < 1.0:
+                seg_s = 10.0
+            segs = sorted(
+                glob.glob(os.path.join(config.TEMP_DIR, "seg_*.mp4")),
+                key=os.path.getmtime,
+            )
+            if len(segs) < 2:
+                return cfg_fps
+            dts = []
+            n = min(len(segs), 6)
+            for i in range(1, n):
+                dts.append(os.path.getmtime(segs[-i]) - os.path.getmtime(segs[-(i + 1)]))
+            dts = [d for d in dts if d > 0.05]
+            if not dts:
+                return cfg_fps
+            dts.sort()
+            mid = dts[len(dts) // 2]
+            est = int(round(cfg_fps * seg_s / mid))
+            return max(1, min(500, est))
+        except Exception:
+            return max(1, int(config.get("fps") or 30))
+
     def _cloop(self):
         while self.running:
             g = config.get("segment_cleanup_grace")

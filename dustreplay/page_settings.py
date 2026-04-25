@@ -17,6 +17,8 @@ _NONE_SYS = "(No system audio)"
 
 _ENC_VALUES = ["auto", "nvenc", "cpu"]
 
+_STATS_CORNER_ORDER = ("tl", "tr", "bl", "br")
+
 
 def _ffmpeg():
     p = os.path.join(config.APPDATA_DIR, "ffmpeg", "ffmpeg.exe")
@@ -120,6 +122,8 @@ class SettingsPage(ctk.CTkFrame):
         self._tgl(s, "stats_show_cpu", "hw.cpu")
         self._tgl(s, "stats_show_ram", "hw.ram")
         self._tgl(s, "stats_show_gpu", "hw.gpu")
+        self._tgl(s, "stats_show_fps", "hw.fps")
+        self._stats_corner_dd(s)
 
         self._sec(s, "sec.startup")
         self._strt(s)
@@ -166,6 +170,36 @@ class SettingsPage(ctk.CTkFrame):
         self.after(200, self._load_audio_async)
         if self.app:
             self.app.refresh_ui_language()
+
+    def _stats_corner_dd(self, p):
+        self._stats_corner_codes = list(_STATS_CORNER_ORDER)
+        self._stats_corner_labels = [
+            i18n.t(f"hw.corner_{c}") for c in self._stats_corner_codes
+        ]
+        cur = (config.get("stats_overlay_corner") or "br").lower()
+        if cur not in self._stats_corner_codes:
+            cur = "br"
+        cur_label = self._stats_corner_labels[self._stats_corner_codes.index(cur)]
+        r = ctk.CTkFrame(p, fg_color=_PD, corner_radius=8)
+        r.pack(fill="x", padx=8, pady=4)
+        ctk.CTkLabel(
+            r,
+            text=i18n.t("hw.corner"),
+            anchor="w",
+            text_color="#bbaadd",
+            font=ctk.CTkFont(size=12),
+        ).pack(side="left", padx=(12, 0), pady=12)
+        self._stats_corner_var = ctk.StringVar(value=cur_label)
+        ctk.CTkOptionMenu(
+            r,
+            variable=self._stats_corner_var,
+            values=self._stats_corner_labels,
+            fg_color="#150030",
+            button_color=_P,
+            button_hover_color=_PH,
+            dropdown_fg_color="#0e0018",
+            width=200,
+        ).pack(side="right", padx=12, pady=8)
 
     def _encoder_dd(self, p):
         labels = i18n.encoder_labels()
@@ -530,6 +564,15 @@ class SettingsPage(ctk.CTkFrame):
         plabs = getattr(self, "_panel_labels", i18n.panel_side_labels())
         sel = self._side_var.get()
         config.set("panel_side", "left" if sel == plabs[0] else "right")
+
+        try:
+            if getattr(self, "_stats_corner_labels", None) and getattr(
+                self, "_stats_corner_var", None
+            ):
+                ci = self._stats_corner_labels.index(self._stats_corner_var.get())
+                config.set("stats_overlay_corner", self._stats_corner_codes[ci])
+        except Exception:
+            pass
 
         for k, (v, c) in self._v.items():
             try:

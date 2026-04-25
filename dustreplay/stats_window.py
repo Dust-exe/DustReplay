@@ -1,4 +1,4 @@
-"""Frameless semi-transparent hardware overlay (CPU / RAM / GPU)."""
+"""Frameless compact hardware overlay: CPU / RAM / GPU / FPS, corner snap only."""
 
 from __future__ import annotations
 
@@ -19,8 +19,9 @@ except ImportError:
     psutil = None
 
 _BG = "#0a0612"
-_FG = "#e8e0ff"
-_AC = "#aa77ff"
+_LBL = "#ffffff"
+_VAL = "#aa77ff"
+_CORNERS = ("tl", "tr", "bl", "br")
 
 
 def _subprocess_flags():
@@ -58,10 +59,10 @@ def _query_nvidia_gpu() -> str | None:
 
 
 class StatsWindow(ctk.CTkToplevel):
-    """Borderless, draggable, topmost overlay with live CPU / RAM / GPU."""
+    """Small borderless overlay; position = screen corner only (no drag)."""
 
-    _W = 216
-    _H = 118
+    _W = 132
+    _H = 128
 
     def __init__(self, master, recorder, app_ref):
         super().__init__(master)
@@ -70,7 +71,7 @@ class StatsWindow(ctk.CTkToplevel):
         self._tick_id = None
         self._gpu_cache = ""
         self._gpu_cache_at = 0.0
-        self._drag_offset = None
+        self._corner_btns: dict[str, ctk.CTkButton] = {}
 
         self.overrideredirect(True)
         self.attributes("-topmost", True)
@@ -86,20 +87,18 @@ class StatsWindow(ctk.CTkToplevel):
         self.minsize(self._W, self._H)
         self.maxsize(self._W, self._H)
 
-        self._place_initial_geometry()
+        outer = ctk.CTkFrame(self, fg_color=_BG, corner_radius=0, border_width=0)
+        outer.pack(fill="both", expand=True, padx=0, pady=0)
 
-        outer = ctk.CTkFrame(self, fg_color=_BG, corner_radius=10)
-        outer.pack(fill="both", expand=True, padx=2, pady=2)
-
-        hdr = ctk.CTkFrame(outer, fg_color="transparent", height=22)
-        hdr.pack(fill="x", padx=6, pady=(6, 2))
+        hdr = ctk.CTkFrame(outer, fg_color="transparent", height=20)
+        hdr.pack(fill="x", padx=6, pady=(4, 0))
         hdr.pack_propagate(False)
 
         self._hdr_title = ctk.CTkLabel(
             hdr,
             text="Hardware",
-            font=ctk.CTkFont(size=11, weight="bold"),
-            text_color=_AC,
+            font=ctk.CTkFont(size=10, weight="bold"),
+            text_color=_LBL,
             anchor="w",
         )
         self._hdr_title.pack(side="left")
@@ -107,103 +106,124 @@ class StatsWindow(ctk.CTkToplevel):
         ctk.CTkButton(
             hdr,
             text="\u2715",
-            width=22,
-            height=20,
-            font=ctk.CTkFont(size=12),
-            fg_color="#2a1030",
-            hover_color="#552266",
-            corner_radius=4,
+            width=18,
+            height=18,
+            font=ctk.CTkFont(size=11),
+            fg_color="#15151c",
+            hover_color="#252530",
+            corner_radius=3,
+            text_color="#cccccc",
             command=self._close,
         ).pack(side="right")
 
+        cr = ctk.CTkFrame(outer, fg_color="transparent", height=20)
+        cr.pack(fill="x", padx=4, pady=(2, 2))
+        cr.pack_propagate(False)
+        inn = ctk.CTkFrame(cr, fg_color="transparent")
+        inn.place(relx=0.5, rely=0.5, anchor="center")
+
+        for code, txt in zip(_CORNERS, ("TL", "TR", "BL", "BR")):
+            b = ctk.CTkButton(
+                inn,
+                text=txt,
+                width=28,
+                height=18,
+                font=ctk.CTkFont(size=9, weight="bold"),
+                fg_color="#12121a",
+                hover_color="#1e1e28",
+                corner_radius=3,
+                text_color="#888899",
+                border_width=0,
+                command=lambda c=code: self._set_corner(c),
+            )
+            b.pack(side="left", padx=1)
+            self._corner_btns[code] = b
+
         self._body = ctk.CTkFrame(outer, fg_color="transparent")
-        self._body.pack(fill="both", expand=True, padx=8, pady=(0, 8))
+        self._body.pack(fill="both", expand=True, padx=6, pady=(0, 4))
 
         self._lbl_cpu = self._metric_row(0, "CPU")
         self._lbl_ram = self._metric_row(1, "RAM")
         self._lbl_gpu = self._metric_row(2, "GPU")
-
-        for w in (outer, self._body, hdr, self._hdr_title):
-            w.bind("<ButtonPress-1>", self._on_drag_start)
-            w.bind("<B1-Motion>", self._on_drag_motion)
-            w.bind("<ButtonRelease-1>", self._on_drag_end)
+        self._lbl_fps = self._metric_row(3, "FPS")
 
         self.protocol("WM_DELETE_WINDOW", self._close)
+        self._sync_corner_buttons()
+        self._apply_corner_geometry()
         self._schedule_tick()
 
     def _metric_row(self, row: int, name: str):
         fr = ctk.CTkFrame(self._body, fg_color="transparent")
-        fr.grid(row=row, column=0, sticky="ew", pady=2)
+        fr.grid(row=row, column=0, sticky="ew", pady=1)
         self._body.grid_columnconfigure(0, weight=1)
-        nm = ctk.CTkLabel(
+        ctk.CTkLabel(
             fr,
             text=name,
-            font=ctk.CTkFont(size=12, weight="bold"),
-            text_color=_FG,
-            width=40,
+            font=ctk.CTkFont(size=10, weight="bold"),
+            text_color=_LBL,
+            width=34,
             anchor="w",
-        )
-        nm.pack(side="left")
+        ).pack(side="left")
         val = ctk.CTkLabel(
             fr,
             text="--",
-            font=ctk.CTkFont(size=13, weight="bold"),
-            text_color=_AC,
+            font=ctk.CTkFont(size=11, weight="bold"),
+            text_color=_VAL,
             anchor="e",
         )
         val.pack(side="right", fill="x", expand=True)
-        for w in (fr, nm, val):
-            w.bind("<ButtonPress-1>", self._on_drag_start)
-            w.bind("<B1-Motion>", self._on_drag_motion)
-            w.bind("<ButtonRelease-1>", self._on_drag_end)
         return val
 
-    def _place_initial_geometry(self):
-        x = config.get("stats_overlay_x")
-        y = config.get("stats_overlay_y")
+    def _set_corner(self, code: str):
+        if code not in _CORNERS:
+            return
+        config.set("stats_overlay_corner", code)
+        try:
+            config.save()
+        except Exception as e:
+            logger.debug("stats overlay corner save: %s", e)
+        self._apply_corner_geometry()
+        self._sync_corner_buttons()
+
+    def _sync_corner_buttons(self):
+        cur = (config.get("stats_overlay_corner") or "br").lower()
+        if cur not in _CORNERS:
+            cur = "br"
+        for c, btn in self._corner_btns.items():
+            on = c == cur
+            btn.configure(
+                fg_color="#1c1c26" if on else "#12121a",
+                text_color=_LBL if on else "#888899",
+                border_width=1 if on else 0,
+                border_color="#3a3a48" if on else "#12121a",
+            )
+
+    def _apply_corner_geometry(self):
         try:
             self.update_idletasks()
             sw = self.winfo_screenwidth()
             sh = self.winfo_screenheight()
-            if x is None or y is None:
-                gx = sw - self._W - 20
-                gy = sh - self._H - 96
+            w, h = self._W, self._H
+            m = 8
+            tb = 40
+            code = (config.get("stats_overlay_corner") or "br").lower()
+            if code not in _CORNERS:
+                code = "br"
+            if code == "tl":
+                gx, gy = m, m
+            elif code == "tr":
+                gx, gy = sw - w - m, m
+            elif code == "bl":
+                gx, gy = m, sh - h - m - tb
             else:
-                gx = int(x)
-                gy = int(y)
-            gx = max(0, min(gx, max(0, sw - self._W)))
-            gy = max(0, min(gy, max(0, sh - self._H)))
-            self.geometry(f"{self._W}x{self._H}+{gx}+{gy}")
+                gx, gy = sw - w - m, sh - h - m - tb
+            gx = max(0, min(gx, max(0, sw - w)))
+            gy = max(0, min(gy, max(0, sh - h)))
+            self.geometry(f"{w}x{h}+{gx}+{gy}")
         except Exception:
-            self.geometry(f"{self._W}x{self._H}+40+40")
-
-    def _on_drag_start(self, event):
-        self._drag_offset = (event.x_root - self.winfo_x(), event.y_root - self.winfo_y())
-
-    def _on_drag_motion(self, event):
-        if not self._drag_offset:
-            return
-        ox, oy = self._drag_offset
-        nx = event.x_root - ox
-        ny = event.y_root - oy
-        self.geometry(f"{self._W}x{self._H}+{nx}+{ny}")
-
-    def _on_drag_end(self, event):
-        self._drag_offset = None
-        try:
-            config.set("stats_overlay_x", self.winfo_x())
-            config.set("stats_overlay_y", self.winfo_y())
-            config.save()
-        except Exception as e:
-            logger.debug("stats overlay pos save: %s", e)
+            self.geometry(f"{self._W}x{self._H}+20+20")
 
     def _close(self):
-        try:
-            config.set("stats_overlay_x", self.winfo_x())
-            config.set("stats_overlay_y", self.winfo_y())
-            config.save()
-        except Exception:
-            pass
         self.destroy()
 
     def _schedule_tick(self):
@@ -246,19 +266,28 @@ class StatsWindow(ctk.CTkToplevel):
                 logger.debug("psutil: %s", e)
                 cpu, ram = "?", "?"
         else:
-            cpu = ram = "install psutil"
+            cpu, ram = "--", "--"
 
         if config.get("stats_show_cpu"):
             self._lbl_cpu.configure(text=cpu)
         else:
-            self._lbl_cpu.configure(text="off")
+            self._lbl_cpu.configure(text="--")
 
         if config.get("stats_show_ram"):
             self._lbl_ram.configure(text=ram)
         else:
-            self._lbl_ram.configure(text="off")
+            self._lbl_ram.configure(text="--")
 
         if config.get("stats_show_gpu"):
             self._lbl_gpu.configure(text=self._gpu_text())
         else:
-            self._lbl_gpu.configure(text="off")
+            self._lbl_gpu.configure(text="--")
+
+        if config.get("stats_show_fps"):
+            try:
+                n = self.recorder.estimate_capture_fps()
+                self._lbl_fps.configure(text=str(n))
+            except Exception:
+                self._lbl_fps.configure(text="--")
+        else:
+            self._lbl_fps.configure(text="--")

@@ -37,10 +37,12 @@ _DEFAULTS = {
     "stats_show_cpu": True,
     "stats_show_ram": True,
     "stats_show_gpu": True,
-    # Saved overlay position (pixels); null = place in corner on first open
+    # Hardware overlay: corner snap (tl | tr | bl | br); legacy x/y ignored by overlay
+    "stats_overlay_corner": "br",
     "stats_overlay_x": None,
     "stats_overlay_y": None,
     "stats_overlay_alpha": 0.88,
+    "stats_show_fps": True,
     # UI language: en (default) | tr
     "ui_language": "en",
 }
@@ -102,6 +104,12 @@ def migrate():
         changed = True
     if "video_encoder" not in _cfg:
         _cfg["video_encoder"] = "auto"
+        changed = True
+    if "stats_overlay_corner" not in _cfg:
+        _cfg["stats_overlay_corner"] = "br"
+        changed = True
+    if "stats_show_fps" not in _cfg:
+        _cfg["stats_show_fps"] = True
         changed = True
     if changed:
         try:
