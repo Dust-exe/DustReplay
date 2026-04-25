@@ -18,6 +18,7 @@ _NONE_SYS = "(No system audio)"
 _ENC_VALUES = ["auto", "nvenc", "cpu"]
 
 _STATS_CORNER_ORDER = ("tl", "tr", "bl", "br")
+_STATS_MODE_ORDER = ("compact", "normal", "advanced")
 
 
 def _ffmpeg():
@@ -123,6 +124,7 @@ class SettingsPage(ctk.CTkFrame):
         self._tgl(s, "stats_show_ram", "hw.ram")
         self._tgl(s, "stats_show_gpu", "hw.gpu")
         self._tgl(s, "stats_show_fps", "hw.fps")
+        self._stats_mode_dd(s)
         self._stats_corner_dd(s)
 
         self._sec(s, "sec.startup")
@@ -170,6 +172,34 @@ class SettingsPage(ctk.CTkFrame):
         self.after(200, self._load_audio_async)
         if self.app:
             self.app.refresh_ui_language()
+
+    def _stats_mode_dd(self, p):
+        self._stats_mode_codes = list(_STATS_MODE_ORDER)
+        self._stats_mode_labels = [i18n.t(f"hw.mode_{c}") for c in self._stats_mode_codes]
+        cur = (config.get("stats_overlay_mode") or "normal").lower()
+        if cur not in self._stats_mode_codes:
+            cur = "normal"
+        cur_label = self._stats_mode_labels[self._stats_mode_codes.index(cur)]
+        r = ctk.CTkFrame(p, fg_color=_PD, corner_radius=8)
+        r.pack(fill="x", padx=8, pady=4)
+        ctk.CTkLabel(
+            r,
+            text=i18n.t("hw.mode"),
+            anchor="w",
+            text_color="#bbaadd",
+            font=ctk.CTkFont(size=12),
+        ).pack(side="left", padx=(12, 0), pady=12)
+        self._stats_mode_var = ctk.StringVar(value=cur_label)
+        ctk.CTkOptionMenu(
+            r,
+            variable=self._stats_mode_var,
+            values=self._stats_mode_labels,
+            fg_color="#150030",
+            button_color=_P,
+            button_hover_color=_PH,
+            dropdown_fg_color="#0e0018",
+            width=200,
+        ).pack(side="right", padx=12, pady=8)
 
     def _stats_corner_dd(self, p):
         self._stats_corner_codes = list(_STATS_CORNER_ORDER)
@@ -571,6 +601,15 @@ class SettingsPage(ctk.CTkFrame):
             ):
                 ci = self._stats_corner_labels.index(self._stats_corner_var.get())
                 config.set("stats_overlay_corner", self._stats_corner_codes[ci])
+        except Exception:
+            pass
+
+        try:
+            if getattr(self, "_stats_mode_labels", None) and getattr(
+                self, "_stats_mode_var", None
+            ):
+                mi = self._stats_mode_labels.index(self._stats_mode_var.get())
+                config.set("stats_overlay_mode", self._stats_mode_codes[mi])
         except Exception:
             pass
 

@@ -490,6 +490,21 @@ class AppWindow(ctk.CTk):
                 return
         except Exception:
             self._stats_win = None
+        if not any(
+            (
+                config.get("stats_show_cpu"),
+                config.get("stats_show_ram"),
+                config.get("stats_show_gpu"),
+                config.get("stats_show_fps"),
+            )
+        ):
+            try:
+                self.pages["home"].show_info(
+                    i18n.t("stats.none_enabled"), color="#aa8866"
+                )
+            except Exception:
+                pass
+            return
         self._stats_win = StatsWindow(self, self.recorder, self)
 
     def toggle_manual_recording(self):
@@ -661,6 +676,21 @@ class AppWindow(ctk.CTk):
             self.pages["home"].show_info(
                 i18n.t("msg.settings_saved"), color="#aa88ff"
             )
+        try:
+            if getattr(self, "_stats_win", None) and self._stats_win.winfo_exists():
+                self._stats_win.destroy()
+                self._stats_win = None
+                if any(
+                    (
+                        config.get("stats_show_cpu"),
+                        config.get("stats_show_ram"),
+                        config.get("stats_show_gpu"),
+                        config.get("stats_show_fps"),
+                    )
+                ):
+                    self._stats_win = StatsWindow(self, self.recorder, self)
+        except Exception:
+            self._stats_win = None
         if self.overlay:
             self.overlay.toggle_enabled(config.get("overlay_enabled"))
         self.register_global_hotkeys()

@@ -57,6 +57,10 @@ _MSG = {
         "hw.corner_bl": "Bottom-left",
         "hw.corner_br": "Bottom-right",
         "hw.fps": "Show estimated capture FPS (overlay)",
+        "hw.mode": "Hardware panel layout",
+        "hw.mode_compact": "Compact",
+        "hw.mode_normal": "Normal",
+        "hw.mode_advanced": "Advanced",
         "su.on": "\u2713 Run at Windows startup",
         "su.off": "\u2715 Not set to run at startup",
         "su.toggle": "Change",
@@ -85,6 +89,7 @@ _MSG = {
         "stats.ram": "RAM",
         "stats.gpu": "GPU",
         "stats.fps": "FPS",
+        "stats.none_enabled": "Turn on at least one hardware item (CPU/RAM/GPU/FPS) in Settings.",
     },
     "tr": {
         "nav.home": "\U0001f3e0 Ana Sayfa",
@@ -140,6 +145,10 @@ _MSG = {
         "hw.corner_bl": "Sol alt",
         "hw.corner_br": "Sağ alt",
         "hw.fps": "Tahmini yakalama FPS'ini göster (panel)",
+        "hw.mode": "Donanım paneli düzeni",
+        "hw.mode_compact": "Kompakt",
+        "hw.mode_normal": "Normal",
+        "hw.mode_advanced": "Gelişmiş",
         "su.on": "\u2713 Windows ile başlat",
         "su.off": "\u2715 Başlangıçta çalışmıyor",
         "su.toggle": "Değiştir",
@@ -168,6 +177,7 @@ _MSG = {
         "stats.ram": "RAM",
         "stats.gpu": "GPU",
         "stats.fps": "FPS",
+        "stats.none_enabled": "Ayarda en az bir donanım \u00f6\u011fesi (CPU/RAM/GPU/FPS) a\u00e7.",
     },
 }
 

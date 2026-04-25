@@ -41,7 +41,8 @@ _DEFAULTS = {
     "stats_overlay_corner": "br",
     "stats_overlay_x": None,
     "stats_overlay_y": None,
-    "stats_overlay_alpha": 0.88,
+    "stats_overlay_alpha": 0.78,
+    "stats_overlay_mode": "normal",  # compact | normal | advanced
     "stats_show_fps": True,
     # UI language: en (default) | tr
     "ui_language": "en",
@@ -110,6 +111,9 @@ def migrate():
         changed = True
     if "stats_show_fps" not in _cfg:
         _cfg["stats_show_fps"] = True
+        changed = True
+    if "stats_overlay_mode" not in _cfg:
+        _cfg["stats_overlay_mode"] = "normal"
         changed = True
     if changed:
         try:
