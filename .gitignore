@@ -12,3 +12,6 @@ Thumbs.db
 Desktop.ini
 dustreplay/icon.ico
 **/ffmpeg_stderr.log
+
+# Local Cursor / Claude IDE settings (machine-specific)
+.claude/
