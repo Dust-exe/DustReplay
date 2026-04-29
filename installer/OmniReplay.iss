@@ -1,7 +1,7 @@
 #define MyAppName "Omni Replay"
 #define MyAppVersion "3.2.0"
 #define MyAppPublisher "Omni Replay"
-#define MyAppURL "https://github.com/Dust-exe/dustreplay"
+#define MyAppURL "https://github.com/Dust-exe/omni-replay"
 #define MyAppExeName "OmniReplay.exe"
 
 [Setup]

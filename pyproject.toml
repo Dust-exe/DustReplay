@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/dust-exe/dustreplay"
+Homepage = "https://github.com/Dust-exe/omni-replay"
 
 [build-system]
 requires = ["setuptools>=61"]

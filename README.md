@@ -2,7 +2,7 @@
 
 Windows **instant replay**: a rolling screen buffer runs in the background. When something worth keeping happens, hit your **save hotkey** and the last *N* minutes are written to an MP4.
 
-**[Download the installer (Releases)](https://github.com/Dust-exe/dustreplay/releases)** — grab `OmniReplay-Setup.exe`, run it, and you are done (no Python or extra downloads required for end users).
+**[Download the installer (Releases)](https://github.com/Dust-exe/omni-replay/releases)** — grab `OmniReplay-Setup.exe`, run it, and you are done (no Python or extra downloads required for end users).
 
 ---
 
@@ -17,7 +17,7 @@ Windows **instant replay**: a rolling screen buffer runs in the background. When
 
 ## Install (end users)
 
-1. Open **[Releases](https://github.com/Dust-exe/dustreplay/releases)**.
+1. Open **[Releases](https://github.com/Dust-exe/omni-replay/releases)**.
 2. Download **`OmniReplay-Setup.exe`**.
 3. Run the installer and start **Omni Replay** from the Start menu or desktop shortcut.
 
