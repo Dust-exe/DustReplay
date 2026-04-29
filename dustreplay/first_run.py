@@ -5,6 +5,7 @@ import zipfile
 
 import config
 import customtkinter as ctk
+import theme
 
 FFMPEG_URL = (
     "https://github.com/BtbN/ffmpeg-builds/releases/download/latest/"
@@ -27,31 +28,31 @@ class _DL:
     def __init__(self):
         ctk.set_appearance_mode("dark")
         self.root = ctk.CTk()
-        self.root.title("DustReplay — First run")
+        self.root.title(f"{config.APP_DISPLAY} — First run")
         self.root.geometry("480x300")
         self.root.resizable(False, False)
-        self.root.configure(fg_color="#0d0019")
+        self.root.configure(fg_color=theme.BG)
         self.root.protocol("WM_DELETE_WINDOW", lambda: None)
         self.root.update_idletasks()
         sw, sh = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
         self.root.geometry(f"480x300+{(sw - 480) // 2}+{(sh - 300) // 2}")
         ctk.CTkLabel(
             self.root,
-            text="\u25cf DustReplay",
+            text=f"\u25cf {config.APP_DISPLAY}",
             font=ctk.CTkFont(size=24, weight="bold"),
-            text_color="#9933ff",
+            text_color=theme.ACCENT,
         ).pack(pady=(30, 0))
         ctk.CTkLabel(
             self.root,
             text="Downloading ffmpeg (~80 MB)…",
             font=ctk.CTkFont(size=12),
-            text_color="#aa77ff",
+            text_color=theme.TEXT_SOFT,
         ).pack(pady=(4, 20))
         self.bar = ctk.CTkProgressBar(
             self.root,
             height=14,
-            progress_color="#9933ff",
-            fg_color="#2a004a",
+            progress_color=theme.ACCENT,
+            fg_color=theme.ACCENT_DEEP,
             corner_radius=6,
         )
         self.bar.pack(padx=48, fill="x")
@@ -60,21 +61,21 @@ class _DL:
             self.root,
             text="Connecting…",
             font=ctk.CTkFont(size=12),
-            text_color="#bb88ff",
+            text_color=theme.TEXT_SOFT,
         )
         self.st.pack(pady=(14, 0))
         self.pc = ctk.CTkLabel(
             self.root,
             text="0%",
             font=ctk.CTkFont(size=13, weight="bold"),
-            text_color="#9933ff",
+            text_color=theme.ACCENT,
         )
         self.pc.pack()
         ctk.CTkLabel(
             self.root,
             text="This download runs once.",
             font=ctk.CTkFont(size=11),
-            text_color="#3d1080",
+            text_color=theme.TEXT_DIM,
         ).pack(pady=(10, 0))
         self._ok = False
         self._err = None
@@ -118,7 +119,7 @@ class _DL:
             self._err = str(e)
             self.root.after(
                 0,
-                lambda: self.st.configure(text=f"Error: {e}", text_color="#ff4444"),
+                lambda: self.st.configure(text=f"Error: {e}", text_color=theme.RED),
             )
 
     def run(self):
@@ -131,7 +132,7 @@ class _DL:
             ctypes.windll.user32.MessageBoxW(
                 0,
                 f"Could not download ffmpeg:\n{self._err}",
-                "DustReplay",
+                config.APP_DISPLAY,
                 0x10,
             )
             sys.exit(1)

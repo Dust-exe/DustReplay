@@ -5,9 +5,10 @@ import subprocess
 import customtkinter as ctk
 
 import config
+import theme
 
-_P = "#8833ee"
-_PD = "#0e0018"
+_P = theme.P
+_PD = theme.PD
 
 
 class RecordingsPage(ctk.CTkFrame):
@@ -24,15 +25,15 @@ class RecordingsPage(ctk.CTkFrame):
             top,
             text="\U0001f3ac  Recordings",
             font=ctk.CTkFont(size=20, weight="bold"),
-            text_color="white",
+            text_color=theme.TEXT,
         ).pack(side="left")
         ctk.CTkButton(
             top,
             text="Open folder",
             width=120,
             height=34,
-            fg_color="#2a004a",
-            hover_color="#3d1080",
+            fg_color=theme.BTN_DARK,
+            hover_color=theme.ACCENT_HOVER,
             border_width=1,
             border_color=_P,
             command=self._open_folder,
@@ -42,12 +43,15 @@ class RecordingsPage(ctk.CTkFrame):
             text="\u21ba Refresh",
             width=85,
             height=34,
-            fg_color="#1e003a",
-            hover_color="#2a004a",
+            fg_color=theme.ACCENT_DEEP,
+            hover_color=theme.BTN_DARK,
             command=self.refresh,
         ).pack(side="right", padx=(0, 8))
         self.scroll = ctk.CTkScrollableFrame(
-            self, corner_radius=14, fg_color="#110020", scrollbar_button_color=_P
+            self,
+            corner_radius=14,
+            fg_color=theme.BACKDROP,
+            scrollbar_button_color=_P,
         )
         self.scroll.pack(fill="both", expand=True, padx=20, pady=(0, 20))
         self.refresh()
@@ -79,7 +83,7 @@ class RecordingsPage(ctk.CTkFrame):
             self.scroll,
             text="\U0001f4c2  No recordings yet.",
             font=ctk.CTkFont(size=14),
-            text_color="#554477",
+            text_color=theme.TEXT_DIM,
         )
         l.pack(pady=50)
         self._rows.append(l)
@@ -91,14 +95,14 @@ class RecordingsPage(ctk.CTkFrame):
             height=60,
             fg_color=_PD,
             border_width=1,
-            border_color="#3d1080",
+            border_color=theme.ACCENT_HOVER,
         )
         r.pack_propagate(False)
         ctk.CTkLabel(
             r,
             text=fn,
             font=ctk.CTkFont(size=13, weight="bold"),
-            text_color="white",
+            text_color=theme.TEXT,
             anchor="w",
         ).place(x=14, y=9)
         try:
@@ -112,7 +116,7 @@ class RecordingsPage(ctk.CTkFrame):
             r,
             text=f"\U0001f552 {dt}   \U0001f4be {sz}",
             font=ctk.CTkFont(size=11),
-            text_color="#aa77ff",
+            text_color=theme.TEXT_SOFT,
             anchor="w",
         ).place(x=14, y=34)
         ctk.CTkButton(
@@ -120,8 +124,8 @@ class RecordingsPage(ctk.CTkFrame):
             text="Delete",
             width=52,
             height=30,
-            fg_color="#5a1a1a",
-            hover_color="#8a2020",
+            fg_color=theme.RED,
+            hover_color="#8a3030",
             corner_radius=8,
             command=lambda: (os.remove(fp), self.refresh()) if os.path.isfile(fp) else None,
         ).place(relx=1.0, rely=0.5, anchor="e", x=-10)
@@ -130,8 +134,8 @@ class RecordingsPage(ctk.CTkFrame):
             text="Play",
             width=60,
             height=30,
-            fg_color="#2a004a",
-            hover_color="#3d1080",
+            fg_color=theme.BTN_DARK,
+            hover_color=theme.ACCENT_HOVER,
             corner_radius=8,
             border_width=1,
             border_color=_P,

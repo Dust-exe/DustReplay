@@ -7,10 +7,11 @@ import customtkinter as ctk
 import config
 import i18n
 import startup
+import theme
 
-_P = "#8833ee"
-_PH = "#6622cc"
-_PD = "#0e0018"
+_P = theme.P
+_PH = theme.PH
+_PD = theme.PD
 
 _NONE_MIC = "(No microphone)"
 _NONE_SYS = "(No system audio)"
@@ -91,7 +92,7 @@ class SettingsPage(ctk.CTkFrame):
         ).pack(pady=(22, 6), anchor="w", padx=26)
 
         self._scroll = ctk.CTkScrollableFrame(
-            self, corner_radius=0, fg_color="#08080e", scrollbar_button_color=_P
+            self, corner_radius=0, fg_color=theme.BG, scrollbar_button_color=_P
         )
         self._scroll.pack(fill="both", expand=True, padx=0, pady=0)
         s = self._scroll
@@ -130,13 +131,13 @@ class SettingsPage(ctk.CTkFrame):
         self._sec(s, "sec.startup")
         self._strt(s)
 
-        lang_fr = ctk.CTkFrame(self, fg_color="#0a0a12", corner_radius=10)
+        lang_fr = ctk.CTkFrame(self, fg_color=theme.PANEL, corner_radius=10)
         lang_fr.pack(fill="x", padx=16, pady=(10, 6))
         ctk.CTkLabel(
             lang_fr,
             text=i18n.t("settings.language"),
             anchor="w",
-            text_color="#bbaadd",
+            text_color=theme.TEXT_SOFT,
             font=ctk.CTkFont(size=13, weight="bold"),
         ).pack(side="left", padx=(14, 8), pady=12)
         cur = (config.get("ui_language") or "en").lower()
@@ -147,10 +148,10 @@ class SettingsPage(ctk.CTkFrame):
             variable=self._lang_var,
             values=["English", "Türkçe"],
             command=self._on_language,
-            fg_color="#150030",
+            fg_color=theme.PANEL,
             button_color=_P,
             button_hover_color=_PH,
-            dropdown_fg_color="#0e0018",
+            dropdown_fg_color=theme.ACCENT_DEEP,
             width=160,
         ).pack(side="right", padx=14, pady=10)
 
@@ -186,7 +187,7 @@ class SettingsPage(ctk.CTkFrame):
             r,
             text=i18n.t("hw.mode"),
             anchor="w",
-            text_color="#bbaadd",
+            text_color=theme.TEXT_SOFT,
             font=ctk.CTkFont(size=12),
         ).pack(side="left", padx=(12, 0), pady=12)
         self._stats_mode_var = ctk.StringVar(value=cur_label)
@@ -194,10 +195,10 @@ class SettingsPage(ctk.CTkFrame):
             r,
             variable=self._stats_mode_var,
             values=self._stats_mode_labels,
-            fg_color="#150030",
+            fg_color=theme.PANEL,
             button_color=_P,
             button_hover_color=_PH,
-            dropdown_fg_color="#0e0018",
+            dropdown_fg_color=theme.ACCENT_DEEP,
             width=200,
         ).pack(side="right", padx=12, pady=8)
 
@@ -216,7 +217,7 @@ class SettingsPage(ctk.CTkFrame):
             r,
             text=i18n.t("hw.corner"),
             anchor="w",
-            text_color="#bbaadd",
+            text_color=theme.TEXT_SOFT,
             font=ctk.CTkFont(size=12),
         ).pack(side="left", padx=(12, 0), pady=12)
         self._stats_corner_var = ctk.StringVar(value=cur_label)
@@ -224,10 +225,10 @@ class SettingsPage(ctk.CTkFrame):
             r,
             variable=self._stats_corner_var,
             values=self._stats_corner_labels,
-            fg_color="#150030",
+            fg_color=theme.PANEL,
             button_color=_P,
             button_hover_color=_PH,
-            dropdown_fg_color="#0e0018",
+            dropdown_fg_color=theme.ACCENT_DEEP,
             width=200,
         ).pack(side="right", padx=12, pady=8)
 
@@ -244,7 +245,7 @@ class SettingsPage(ctk.CTkFrame):
             r,
             text=i18n.t("rec.encoder"),
             anchor="w",
-            text_color="#bbaadd",
+            text_color=theme.TEXT_SOFT,
             font=ctk.CTkFont(size=12),
         ).pack(side="left", padx=(12, 0), pady=12)
         self._enc_var = ctk.StringVar(value=labels[ix])
@@ -252,10 +253,10 @@ class SettingsPage(ctk.CTkFrame):
             r,
             variable=self._enc_var,
             values=labels,
-            fg_color="#150030",
+            fg_color=theme.PANEL,
             button_color=_P,
             button_hover_color=_PH,
-            dropdown_fg_color="#0e0018",
+            dropdown_fg_color=theme.ACCENT_DEEP,
             width=220,
         ).pack(side="right", padx=12, pady=8)
 
@@ -269,7 +270,7 @@ class SettingsPage(ctk.CTkFrame):
             r,
             text=i18n.t("panel.side"),
             anchor="w",
-            text_color="#bbaadd",
+            text_color=theme.TEXT_SOFT,
             font=ctk.CTkFont(size=12),
         ).pack(side="left", padx=(12, 0), pady=12)
         self._side_var = ctk.StringVar(value=cur)
@@ -278,10 +279,10 @@ class SettingsPage(ctk.CTkFrame):
             r,
             variable=self._side_var,
             values=labels,
-            fg_color="#150030",
+            fg_color=theme.PANEL,
             button_color=_P,
             button_hover_color=_PH,
-            dropdown_fg_color="#0e0018",
+            dropdown_fg_color=theme.ACCENT_DEEP,
             width=160,
         ).pack(side="right", padx=12, pady=8)
 
@@ -296,7 +297,7 @@ class SettingsPage(ctk.CTkFrame):
             r,
             text=i18n.t("disp.capture"),
             anchor="w",
-            text_color="#bbaadd",
+            text_color=theme.TEXT_SOFT,
             font=ctk.CTkFont(size=12),
         ).pack(side="left", padx=(12, 0), pady=12)
         self._mon_var = ctk.StringVar(value=cur)
@@ -304,10 +305,10 @@ class SettingsPage(ctk.CTkFrame):
             r,
             variable=self._mon_var,
             values=self._mon_items,
-            fg_color="#150030",
+            fg_color=theme.PANEL,
             button_color=_P,
             button_hover_color=_PH,
-            dropdown_fg_color="#0e0018",
+            dropdown_fg_color=theme.ACCENT_DEEP,
             width=220,
         ).pack(side="right", padx=12, pady=8)
 
@@ -318,7 +319,7 @@ class SettingsPage(ctk.CTkFrame):
             r1,
             text=i18n.t("audio.mic"),
             anchor="w",
-            text_color="#bbaadd",
+            text_color=theme.TEXT_SOFT,
             font=ctk.CTkFont(size=12),
         ).pack(side="left", padx=(12, 0), pady=12)
         self._mic_var = ctk.StringVar(value=_NONE_MIC)
@@ -326,10 +327,10 @@ class SettingsPage(ctk.CTkFrame):
             r1,
             variable=self._mic_var,
             values=self._mic_items,
-            fg_color="#150030",
+            fg_color=theme.PANEL,
             button_color=_P,
             button_hover_color=_PH,
-            dropdown_fg_color="#0e0018",
+            dropdown_fg_color=theme.ACCENT_DEEP,
             width=220,
         )
         self._mic_dd_widget.pack(side="right", padx=12, pady=8)
@@ -340,7 +341,7 @@ class SettingsPage(ctk.CTkFrame):
             r2,
             text=i18n.t("audio.sys"),
             anchor="w",
-            text_color="#bbaadd",
+            text_color=theme.TEXT_SOFT,
             font=ctk.CTkFont(size=12),
         ).pack(side="left", padx=(12, 0), pady=12)
         self._sys_var = ctk.StringVar(value=_NONE_SYS)
@@ -348,10 +349,10 @@ class SettingsPage(ctk.CTkFrame):
             r2,
             variable=self._sys_var,
             values=self._sys_items,
-            fg_color="#150030",
+            fg_color=theme.PANEL,
             button_color=_P,
             button_hover_color=_PH,
-            dropdown_fg_color="#0e0018",
+            dropdown_fg_color=theme.ACCENT_DEEP,
             width=220,
         )
         self._sys_dd_widget.pack(side="right", padx=12, pady=8)
@@ -362,14 +363,14 @@ class SettingsPage(ctk.CTkFrame):
             hint_row,
             text=i18n.t("audio.loading"),
             font=ctk.CTkFont(size=11),
-            text_color="#554477",
+            text_color=theme.TEXT_DIM,
         )
         self._audio_hint.pack(side="left", anchor="w")
         self._audio_refresh_btn = ctk.CTkButton(
             hint_row,
             text=i18n.t("audio.refresh"),
             width=72,
-            fg_color="#150030",
+            fg_color=theme.PANEL,
             hover_color=_PH,
             border_width=1,
             border_color=_P,
@@ -386,7 +387,7 @@ class SettingsPage(ctk.CTkFrame):
 
     def _refresh_audio(self):
         if self._audio_hint:
-            self._audio_hint.configure(text=i18n.t("audio.loading"), text_color="#554477")
+            self._audio_hint.configure(text=i18n.t("audio.loading"), text_color=theme.TEXT_DIM)
         self._load_audio_async()
 
     def _apply_audio_devices(self, mic_items, sys_items):
@@ -417,12 +418,12 @@ class SettingsPage(ctk.CTkFrame):
                 if n > 0:
                     self._audio_hint.configure(
                         text=i18n.t("audio.found", n=n),
-                        text_color="#554477",
+                        text_color=theme.TEXT_DIM,
                     )
                 else:
                     self._audio_hint.configure(
                         text=i18n.t("audio.limited"),
-                        text_color="#886600",
+                        text_color=theme.WARNING,
                     )
         except Exception:
             pass
@@ -432,9 +433,9 @@ class SettingsPage(ctk.CTkFrame):
             p,
             text=i18n.t(key),
             font=ctk.CTkFont(size=12, weight="bold"),
-            text_color="#9944ee",
+            text_color=theme.ACCENT,
         ).pack(anchor="w", padx=12, pady=(20, 2))
-        ctk.CTkFrame(p, height=1, fg_color="#220044").pack(fill="x", padx=8, pady=(0, 6))
+        ctk.CTkFrame(p, height=1, fg_color=theme.SEPARATOR).pack(fill="x", padx=8, pady=(0, 6))
 
     def _sld(self, p, k, label_key, f, t, hint_key=None):
         v = ctk.IntVar(value=int(config.get(k)))
@@ -447,7 +448,7 @@ class SettingsPage(ctk.CTkFrame):
             top,
             text=i18n.t(label_key),
             anchor="w",
-            text_color="#bbaadd",
+            text_color=theme.TEXT_SOFT,
             font=ctk.CTkFont(size=12),
         ).pack(side="left")
         lb = ctk.CTkLabel(
@@ -463,7 +464,7 @@ class SettingsPage(ctk.CTkFrame):
                 r,
                 text=i18n.t(hint_key),
                 anchor="w",
-                text_color="#665588",
+                text_color=theme.VERSION_MUTED,
                 font=ctk.CTkFont(size=10),
                 wraplength=260,
             ).pack(fill="x", padx=12, pady=(0, 6))
@@ -489,7 +490,7 @@ class SettingsPage(ctk.CTkFrame):
             r,
             text=i18n.t(label_key),
             anchor="w",
-            text_color="#bbaadd",
+            text_color=theme.TEXT_SOFT,
             font=ctk.CTkFont(size=12),
             wraplength=220,
         ).pack(side="left", padx=(12, 0), pady=12)
@@ -511,12 +512,12 @@ class SettingsPage(ctk.CTkFrame):
             r,
             text=i18n.t(label_key),
             anchor="w",
-            text_color="#bbaadd",
+            text_color=theme.TEXT_SOFT,
             font=ctk.CTkFont(size=12),
             wraplength=180,
         ).pack(side="left", padx=(12, 0), pady=12)
         ctk.CTkEntry(
-            r, textvariable=v, width=110, border_color=_P, fg_color="#050510"
+            r, textvariable=v, width=110, border_color=_P, fg_color=theme.BG
         ).pack(side="right", padx=12, pady=8)
 
     def _fld(self, p, k):
@@ -525,13 +526,13 @@ class SettingsPage(ctk.CTkFrame):
         r = ctk.CTkFrame(p, fg_color=_PD, corner_radius=8)
         r.pack(fill="x", padx=8, pady=4)
         ctk.CTkEntry(
-            r, textvariable=v, border_color="#330055", fg_color="#050510"
+            r, textvariable=v, border_color=theme.SBG, fg_color=theme.BG
         ).pack(side="left", fill="x", expand=True, padx=(12, 6), pady=10)
         ctk.CTkButton(
             r,
             text=i18n.t("out.browse"),
             width=68,
-            fg_color="#150030",
+            fg_color=theme.PANEL,
             hover_color=_PH,
             border_width=1,
             border_color=_P,
@@ -547,7 +548,7 @@ class SettingsPage(ctk.CTkFrame):
         self._sl = ctk.CTkLabel(
             r,
             text=i18n.t("su.on") if reg else i18n.t("su.off"),
-            text_color="#4caf50" if reg else "#888",
+            text_color=theme.GREEN if reg else theme.TEXT_DIM,
             anchor="w",
             font=ctk.CTkFont(size=12),
         )
@@ -556,7 +557,7 @@ class SettingsPage(ctk.CTkFrame):
             r,
             text=i18n.t("su.toggle"),
             width=90,
-            fg_color="#2a004a",
+            fg_color=theme.BTN_DARK,
             hover_color=_PH,
             border_width=1,
             border_color=_P,
@@ -566,10 +567,10 @@ class SettingsPage(ctk.CTkFrame):
     def _ts(self):
         if startup.is_registered():
             startup.unregister()
-            self._sl.configure(text=i18n.t("su.off"), text_color="#888")
+            self._sl.configure(text=i18n.t("su.off"), text_color=theme.TEXT_DIM)
         else:
             if startup.register():
-                self._sl.configure(text=i18n.t("su.on"), text_color="#4caf50")
+                self._sl.configure(text=i18n.t("su.on"), text_color=theme.GREEN)
 
     def _save(self):
         mon_sel = self._mon_var.get()

@@ -4,19 +4,19 @@ import os
 
 logger = logging.getLogger(__name__)
 
-APP_NAME = "DustReplay"
+APP_NAME = "OmniReplay"
+APP_DISPLAY = "Omni Replay"
 APPDATA_DIR = os.path.join(os.getenv("APPDATA", os.path.expanduser("~")), APP_NAME)
 TEMP_DIR = os.path.join(APPDATA_DIR, "temp")
 LOG_DIR = APPDATA_DIR
 _CFG_FILE = os.path.join(APPDATA_DIR, "settings.json")
 
-# monitor_index: 1-based index into DXGI / EnumDisplayMonitors order (1 = first display)
 _DEFAULTS = {
     "buffer_minutes": 20,
     "segment_seconds": 10,
     "fps": 30,
     "quality": 28,
-    "video_encoder": "auto",  # auto | nvenc | cpu
+    "video_encoder": "auto",
     "monitor_index": 1,
     "mic_device": "",
     "sys_audio_device": "__wasapi_out__",
@@ -33,18 +33,15 @@ _DEFAULTS = {
     "overlay_x": 20,
     "overlay_y": 20,
     "overlay_monitor": 0,
-    # Hardware stats overlay (Home → Statistics): CPU / RAM / GPU only
     "stats_show_cpu": True,
     "stats_show_ram": True,
     "stats_show_gpu": True,
-    # Hardware overlay: corner snap (tl | tr | bl | br); legacy x/y ignored by overlay
     "stats_overlay_corner": "br",
     "stats_overlay_x": None,
     "stats_overlay_y": None,
     "stats_overlay_alpha": 0.78,
-    "stats_overlay_mode": "normal",  # compact | normal | advanced
+    "stats_overlay_mode": "normal",
     "stats_show_fps": True,
-    # UI language: en (default) | tr
     "ui_language": "en",
 }
 
@@ -99,7 +96,6 @@ def migrate():
     if _cfg.get("segment_seconds", 10) > 15:
         _cfg["segment_seconds"] = 10
         changed = True
-    # Legacy "all monitors" index 0 always mapped to primary only — migrate to 1
     if int(_cfg.get("monitor_index") or 1) < 1:
         _cfg["monitor_index"] = 1
         changed = True

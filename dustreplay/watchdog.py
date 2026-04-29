@@ -3,6 +3,7 @@ import threading
 import time
 
 import config
+from config import APP_DISPLAY
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ class Watchdog:
                 logger.warning("ffmpeg died (%sx)", self._cc)
                 if self._cc >= config.get("max_crash_count") and self.on_notify:
                     self.on_notify(
-                        "DustReplay",
+                        APP_DISPLAY,
                         f"ffmpeg crashed {self._cc} times. Check logs.",
                     )
                 time.sleep(config.get("crash_restart_delay"))

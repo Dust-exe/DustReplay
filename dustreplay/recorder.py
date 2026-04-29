@@ -431,7 +431,6 @@ class Recorder:
                 os.remove(_PID_FILE)
             except Exception:
                 pass
-            # Let OS finish closing segment file handles before we glob.
             time.sleep(0.35)
             segs = sorted(
                 glob.glob(os.path.join(config.TEMP_DIR, "seg_*.mp4")),

@@ -10,6 +10,7 @@ from PIL import Image, ImageDraw
 import config
 import i18n
 import startup
+import theme
 from overlay import RecordingOverlay
 from page_home import HomePage
 from page_recordings import RecordingsPage
@@ -22,11 +23,11 @@ logger = logging.getLogger(__name__)
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-_P = "#8833ee"
-_PH = "#6622cc"
-_BG = "#050508"
-_CBG = "#08080e"
-_SBG = "#000000"
+_P = theme.P
+_PH = theme.PH
+_BG = theme.BG
+_CBG = theme.CBG
+_SBG = theme.SBG
 _PANEL_W = 340
 
 
@@ -34,10 +35,10 @@ def _ti(rec):
     sz = 64
     img = Image.new("RGBA", (sz, sz), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
-    d.ellipse([2, 2, sz - 2, sz - 2], fill=(20, 0, 40, 220))
-    d.ellipse([14, 14, sz - 14, sz - 14], fill=(220, 50, 50) if rec else (80, 80, 80))
+    d.ellipse([2, 2, sz - 2, sz - 2], fill=(49, 10, 93, 230))
+    d.ellipse([14, 14, sz - 14, sz - 14], fill=(216, 80, 80) if rec else (90, 82, 110))
     if rec:
-        d.ellipse([26, 26, sz - 26, sz - 26], fill=(255, 80, 80))
+        d.ellipse([26, 26, sz - 26, sz - 26], fill=(255, 120, 100))
     return img
 
 
@@ -128,7 +129,7 @@ class AppWindow(ctk.CTk):
         hdr.pack_propagate(False)
         ctk.CTkLabel(
             hdr,
-            text="\u25cf  DustReplay",
+            text=f"\u25cf  {config.APP_DISPLAY}",
             font=ctk.CTkFont(size=15, weight="bold"),
             text_color=_P,
         ).pack(side="left", padx=12, pady=14)
@@ -137,7 +138,7 @@ class AppWindow(ctk.CTk):
             text="LIVE",
             font=ctk.CTkFont(size=9, weight="bold"),
             text_color="white",
-            fg_color="#e03030",
+            fg_color=theme.RED,
             corner_radius=5,
             width=44,
             height=18,
@@ -148,17 +149,17 @@ class AppWindow(ctk.CTk):
             text="\u2715",
             width=28,
             height=28,
-            fg_color="#1a003a",
-            hover_color="#3d1080",
+            fg_color=theme.BTN_DARK,
+            hover_color=theme.BTN_DARK_HOVER,
             corner_radius=6,
             font=ctk.CTkFont(size=13),
             command=self.toggle_panel,
         ).pack(side="right", padx=8)
         self.rec_dot = ctk.CTkLabel(
-            hdr, text="\u23fa", font=ctk.CTkFont(size=11), text_color="#e03030"
+            hdr, text="\u23fa", font=ctk.CTkFont(size=11), text_color=theme.RED
         )
         self.rec_dot.pack(side="right", padx=2)
-        ctk.CTkFrame(p, height=1, fg_color="#2a0050").pack(fill="x")
+        ctk.CTkFrame(p, height=1, fg_color=theme.HEADER_LINE).pack(fill="x")
 
         nav = ctk.CTkFrame(p, fg_color=_SBG, corner_radius=0, height=40)
         nav.pack(fill="x")
@@ -175,15 +176,15 @@ class AppWindow(ctk.CTk):
                 width=(_PANEL_W - 16) // 3,
                 height=30,
                 fg_color="transparent",
-                hover_color="#1e003a",
-                text_color="#ccaaff",
+                hover_color=theme.BTN_DARK,
+                text_color=theme.NAV_INACTIVE,
                 font=ctk.CTkFont(size=11),
                 corner_radius=6,
                 command=lambda k=key: self.sp(k),
             )
             b.pack(side="left", padx=2, pady=5)
             self._nb[key] = b
-        ctk.CTkFrame(p, height=1, fg_color="#2a0050").pack(fill="x")
+        ctk.CTkFrame(p, height=1, fg_color=theme.HEADER_LINE).pack(fill="x")
 
         self.content = ctk.CTkFrame(p, corner_radius=0, fg_color=_CBG)
         self.content.pack(fill="both", expand=True)
@@ -203,7 +204,7 @@ class AppWindow(ctk.CTk):
             p,
             text=f"v{__version__}",
             font=ctk.CTkFont(size=10),
-            text_color="#2a0050",
+            text_color=theme.VERSION_MUTED,
             fg_color=_BG,
         ).pack(side="bottom", pady=4)
 
@@ -216,7 +217,7 @@ class AppWindow(ctk.CTk):
         for k, b in self._nb.items():
             b.configure(
                 fg_color=_P if k == key else "transparent",
-                text_color="white" if k == key else "#ccaaff",
+                text_color="white" if k == key else theme.NAV_INACTIVE,
             )
 
     def _panel_x(self):
@@ -254,7 +255,6 @@ class AppWindow(ctk.CTk):
             top = w.winfo_toplevel()
             if top == self._panel:
                 return
-            # Hardware stats overlay is its own Toplevel; keep panel open while it has focus.
             sw = getattr(self, "_stats_win", None)
             if sw is not None:
                 try:
@@ -301,7 +301,7 @@ class AppWindow(ctk.CTk):
         bd = tk.Toplevel(self)
         bd.overrideredirect(True)
         bd.attributes("-alpha", 0.0)
-        bd.configure(bg="#000010")
+        bd.configure(bg=theme.BACKDROP)
         bd.geometry(f"{sw}x{sh}+0+0")
         bd.attributes("-topmost", True)
         bd.bind("<Button-1>", self._close_panel_from_outside)
@@ -360,9 +360,9 @@ class AppWindow(ctk.CTk):
         )
         try:
             self._tray_icon = pystray.Icon(
-                "DustReplay",
+                config.APP_DISPLAY,
                 _ti(True),
-                f"DustReplay  |  {ph}: panel",
+                f"{config.APP_DISPLAY}  |  {ph}: panel",
                 menu,
             )
             threading.Thread(target=self._tray_icon.run, daemon=True).start()
@@ -410,7 +410,7 @@ class AppWindow(ctk.CTk):
             if self.rec_dot:
                 self.rec_dot.configure(
                     text="\u23fa" if self._recording else "\u25a0",
-                    text_color="#e03030" if self._recording else "#555",
+                    text_color=theme.RED if self._recording else "#666677",
                 )
             if self._badge:
                 self._badge.configure(
@@ -419,31 +419,33 @@ class AppWindow(ctk.CTk):
                         if self._recording
                         else i18n.t("badge.off")
                     ),
-                    fg_color="#e03030" if self._recording else "#444",
+                    fg_color=theme.RED if self._recording else "#555566",
                 )
             if self._tray_icon:
                 ph = str(config.get("panel_hotkey")).upper()
                 state = "Recording" if self._recording else "Paused"
-                self._tray_icon.title = f"DustReplay — {state}  |  {ph}: panel"
+                self._tray_icon.title = f"{config.APP_DISPLAY} — {state}  |  {ph}: panel"
         except Exception:
             pass
         self.after(1000, self._tick)
 
-    def _show_toast(self, msg, color="#ccaaff", duration=3500):
+    def _show_toast(self, msg, color=None, duration=3500):
         try:
             import tkinter as tk
 
+            if color is None:
+                color = theme.TOAST_ACCENT
             t = tk.Toplevel(self)
             t.overrideredirect(True)
             t.attributes("-topmost", True)
             t.attributes("-alpha", 0.0)
-            t.configure(bg="#0d001f")
+            t.configure(bg=theme.TOAST_BG)
             pad_x, pad_y = 18, 10
             lbl = tk.Label(
                 t,
                 text=msg,
                 fg=color,
-                bg="#0d001f",
+                bg=theme.TOAST_BG,
                 font=("Segoe UI", 12, "bold"),
                 padx=pad_x,
                 pady=pad_y,
@@ -500,7 +502,7 @@ class AppWindow(ctk.CTk):
         ):
             try:
                 self.pages["home"].show_info(
-                    i18n.t("stats.none_enabled"), color="#aa8866"
+                    i18n.t("stats.none_enabled"), color=theme.WARNING
                 )
             except Exception:
                 pass
@@ -531,7 +533,7 @@ class AppWindow(ctk.CTk):
                 0,
                 lambda: self.pages["home"].show_info(
                     "Could not start file recording. See app.log.",
-                    color="#e03030",
+                    color=theme.RED,
                 ),
             )
             if self._resume_buffer_after_manual:
@@ -543,7 +545,7 @@ class AppWindow(ctk.CTk):
         self.after(
             0,
             lambda: self.pages["home"].show_info(
-                "Recording to MP4… tap again to stop.", color="#aa88ff"
+                "Recording to MP4… tap again to stop.", color=theme.TEXT_SOFT
             ),
         )
 
@@ -556,7 +558,7 @@ class AppWindow(ctk.CTk):
         self.after(0, lambda: self.pages["home"].set_manual_ui(False))
         self.after(
             0,
-            lambda: self.pages["home"].show_info("File recording finished.", color="#4caf50"),
+            lambda: self.pages["home"].show_info("File recording finished.", color=theme.GREEN),
         )
         self.after(800, lambda: self.pages["home"].refresh_gallery())
 
@@ -569,10 +571,10 @@ class AppWindow(ctk.CTk):
             return
         hp = self.pages["home"]
         if self.recorder.manual_recording_active():
-            hp.show_info("Stop file recording before saving a replay clip.", color="#e03030")
+            hp.show_info("Stop file recording before saving a replay clip.", color=theme.RED)
             return
-        hp.show_info("Saving…", color="#aa88ff")
-        self._show_toast("\u23fa  Saving…", color="#aa88ff", duration=8000)
+        hp.show_info("Saving…", color=theme.TEXT_SOFT)
+        self._show_toast("\u23fa  Saving…", color=theme.TEXT_SOFT, duration=8000)
 
         def ok(p):
             self.after(
@@ -581,22 +583,19 @@ class AppWindow(ctk.CTk):
             self.after(
                 0,
                 lambda: self._show_toast(
-                    f"\u2713  Saved  {os.path.basename(p)}", color="#44ee88", duration=4000
+                    f"\u2713  Saved  {os.path.basename(p)}", color=theme.GREEN, duration=4000
                 ),
             )
-            # Do NOT reset_buffer here: it deletes ALL seg_*.mp4 including the new
-            # rolling buffer ffmpeg just started after cut_and_get_segments.
-            # saver.py removes only the merged segment files after export.
             try:
                 self.after(1500, hp.refresh_gallery)
             except Exception:
                 pass
 
         def er(m):
-            self.after(0, lambda: hp.show_info(f"\u2717 {m}", color="#e03030"))
+            self.after(0, lambda: hp.show_info(f"\u2717 {m}", color=theme.RED))
             self.after(
                 0,
-                lambda: self._show_toast(f"\u2717  {m}", color="#e03030", duration=5000),
+                lambda: self._show_toast(f"\u2717  {m}", color=theme.RED, duration=5000),
             )
 
         saver_mod.save_replay(
@@ -610,7 +609,7 @@ class AppWindow(ctk.CTk):
         if self.recorder.manual_recording_active():
             if self.pages:
                 self.pages["home"].show_info(
-                    "Stop file recording first (same row).", color="#e03030"
+                    "Stop file recording first (same row).", color=theme.RED
                 )
             return
         if self._recording:
@@ -649,7 +648,7 @@ class AppWindow(ctk.CTk):
                     except Exception:
                         pass
                     self.after(
-                        0, lambda: self.pages["home"].show_info(_msg, color="#e03030")
+                        0, lambda: self.pages["home"].show_info(_msg, color=theme.RED)
                     )
 
             threading.Thread(target=_start_bg, daemon=True).start()
@@ -674,7 +673,7 @@ class AppWindow(ctk.CTk):
         if self.pages:
             self.pages["home"].refresh_hotkeys()
             self.pages["home"].show_info(
-                i18n.t("msg.settings_saved"), color="#aa88ff"
+                i18n.t("msg.settings_saved"), color=theme.TEXT_SOFT
             )
         try:
             if getattr(self, "_stats_win", None) and self._stats_win.winfo_exists():

@@ -5,7 +5,7 @@ import sys
 
 logger = logging.getLogger(__name__)
 
-TASK_NAME = "DustReplay"
+TASK_NAME = "OmniReplay"
 
 
 def _exe():

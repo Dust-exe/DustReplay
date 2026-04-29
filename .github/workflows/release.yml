@@ -1,0 +1,81 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller
+
+      - name: Build application icon
+        working-directory: dustreplay
+        shell: pwsh
+        run: |
+          if (Test-Path _mkicon.py) { python _mkicon.py }
+
+      - name: PyInstaller (OmniReplay.exe)
+        working-directory: dustreplay
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path ../dist, ../build/pyinstaller_work, ../build | Out-Null
+          $base = @(
+            "-m", "PyInstaller",
+            "--onefile", "--noconsole",
+            "--name", "OmniReplay",
+            "--distpath", "../dist",
+            "--workpath", "../build/pyinstaller_work",
+            "--specpath", "../build",
+            "--hidden-import", "pystray._win32",
+            "--hidden-import", "PIL._tkinter_finder",
+            "--hidden-import", "monitors",
+            "--hidden-import", "audio_devices",
+            "--hidden-import", "overlay",
+            "--hidden-import", "encoding",
+            "--hidden-import", "version",
+            "--hidden-import", "stats_window"
+          )
+          if (Test-Path icon.ico) {
+            python @base --icon=icon.ico main.py
+          } else {
+            python @base main.py
+          }
+          if (-not (Test-Path ../dist/OmniReplay.exe)) { throw "PyInstaller did not produce dist/OmniReplay.exe" }
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup -y --no-progress
+
+      - name: Inno Setup (OmniReplay-Setup.exe)
+        shell: pwsh
+        run: |
+          $iscc = Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { $iscc = Join-Path $env:ProgramFiles "Inno Setup 6\ISCC.exe" }
+          if (-not (Test-Path $iscc)) { throw "ISCC.exe not found after choco install innosetup" }
+          & $iscc (Join-Path $env:GITHUB_WORKSPACE "installer\OmniReplay.iss")
+          if (-not (Test-Path dist\OmniReplay-Setup.exe)) { throw "Inno Setup did not produce dist/OmniReplay-Setup.exe" }
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/OmniReplay.exe
+            dist/OmniReplay-Setup.exe
+            LICENSE
+            LEGAL.md
+          generate_release_notes: true

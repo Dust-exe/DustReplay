@@ -1,6 +1,7 @@
 import tkinter as tk
 
 import config
+import theme
 
 _W, _H = 56, 22
 
@@ -31,18 +32,22 @@ class RecordingOverlay:
         self._canvas = c
 
         r = _H // 2
-        c.create_oval(0, 0, _H, _H, fill="#0e001f", outline="#1a0035", width=1)
-        c.create_oval(_W - _H, 0, _W, _H, fill="#0e001f", outline="#1a0035", width=1)
-        c.create_rectangle(r, 0, _W - r, _H, fill="#0e001f", outline="")
-        c.create_rectangle(r, 1, _W - r, _H - 1, fill="#0e001f", outline="")
+        c.create_oval(
+            0, 0, _H, _H, fill=theme.ACCENT_DEEP, outline=theme.SEPARATOR, width=1
+        )
+        c.create_oval(
+            _W - _H, 0, _W, _H, fill=theme.ACCENT_DEEP, outline=theme.SEPARATOR, width=1
+        )
+        c.create_rectangle(r, 0, _W - r, _H, fill=theme.ACCENT_DEEP, outline="")
+        c.create_rectangle(r, 1, _W - r, _H - 1, fill=theme.ACCENT_DEEP, outline="")
 
-        c.create_oval(6, 7, 15, 16, fill="#2a0850", outline="")
+        c.create_oval(6, 7, 15, 16, fill=theme.ACCENT, outline="")
 
         c.create_text(
             _W // 2 + 5,
             _H // 2,
             text="REC",
-            fill="#3a1060",
+            fill=theme.TEXT_SOFT,
             font=("Arial", 8, "bold"),
             anchor="center",
         )

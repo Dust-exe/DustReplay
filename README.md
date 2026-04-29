@@ -1,20 +1,33 @@
-# DustReplay
+# Omni Replay
 
-**DustReplay** is a Windows desktop app that keeps a **rolling screen buffer** (like an instant replay). When something worth keeping happens, press a **global hotkey** to write the last *N* minutes to an MP4 in your output folder.
+Windows **instant replay**: a rolling screen buffer runs in the background. When something worth keeping happens, hit your **save hotkey** and the last *N* minutes are written to an MP4.
 
-- **Capture**: DXGI Desktop Duplication via ffmpeg (`ddagrab`), optional microphone + system audio (WASAPI loopback or DirectShow fallbacks).
-- **Encode**: **Auto-detect NVIDIA NVENC**; falls back to **CPU H.264 (libx264)** when NVENC is unavailable (AMD/Intel or headless GPUs).
-- **UI**: Side panel (CustomTkinter) + system tray; optional small **REC** overlay.
-- **Hotkeys**: Save clip, stop/start capture, toggle panel — all **re-register** when you change them in Settings.
+**[Download the installer (Releases)](https://github.com/Dust-exe/dustreplay/releases)** — grab `OmniReplay-Setup.exe`, run it, and you are done (no Python or extra downloads required for end users).
 
-## Requirements
+---
 
-- **Windows 10/11** (64-bit)
-- **Python 3.12+** (for running from source)
-- **ffmpeg** is downloaded automatically on first launch (~80 MB, [BtbN Windows build](https://github.com/BtbN/FFmpeg-Builds))
-- **Administrator** rights are often required for global hotkeys (`keyboard` library) — if hotkeys fail, try *Run as administrator*.
+## Highlights
 
-## Quick start (from source)
+- **DXGI capture** through ffmpeg (`ddagrab`), optional **mic + system audio** (WASAPI / DirectShow fallbacks).
+- **NVENC when available**, otherwise **CPU H.264** — encoder choice in Settings.
+- **Global hotkeys** for save, pause/resume capture, and panel toggle (re-register after settings change).
+- **Tray + side panel** (CustomTkinter), optional **REC** overlay, optional **hardware** strip (CPU/RAM/GPU/FPS).
+
+---
+
+## Install (end users)
+
+1. Open **[Releases](https://github.com/Dust-exe/dustreplay/releases)**.
+2. Download **`OmniReplay-Setup.exe`**.
+3. Run the installer and start **Omni Replay** from the Start menu or desktop shortcut.
+
+First launch may download **ffmpeg** into `%APPDATA%\OmniReplay\` (one-time, on-demand).
+
+---
+
+## Run from source (developers)
+
+Requirements: **Windows 10/11 x64**, **Python 3.12+**.
 
 ```powershell
 cd dustreplay
@@ -22,48 +35,67 @@ py -3.12 -m pip install -r ..\requirements.txt
 py -3.12 main.py
 ```
 
-Settings and logs live under `%APPDATA%\DustReplay\` (including `settings.json` and `app.log`).
+Settings and logs: `%APPDATA%\OmniReplay\` (`settings.json`, `app.log`, `ffmpeg_stderr.log` on errors).
 
-## Build a single `DustReplay.exe`
+---
 
-From the repository root:
+## Build portable exe + optional installer
+
+From the repo root:
 
 ```powershell
 .\build.ps1
 ```
 
-The script installs dependencies, runs PyInstaller, and copies `DustReplay.exe` to your **Desktop** (same behaviour as the legacy `instant_replay` scripts).
+Produces `dist\OmniReplay.exe` (PyInstaller one-file) and copies it to your Desktop when possible.
 
-## Project layout
+To also build **`dist\OmniReplay-Setup.exe`**, install [Inno Setup 6](https://jrsoftware.org/isdl.php); `build.ps1` detects `ISCC.exe` and compiles [`installer/OmniReplay.iss`](installer/OmniReplay.iss). Details: [`installer/README.md`](installer/README.md).
+
+### Releases on GitHub (no local PC required for users)
+
+Official binaries are produced by **GitHub Actions** when a maintainer pushes a **`v*`** version tag. See [`.github/workflows/release.yml`](.github/workflows/release.yml).
+
+1. Align versions in [`dustreplay/version.py`](dustreplay/version.py), [`pyproject.toml`](pyproject.toml), and `#define MyAppVersion` in [`installer/OmniReplay.iss`](installer/OmniReplay.iss).
+2. Commit, then: `git tag v3.2.1` and `git push origin v3.2.1`.
+
+The workflow uploads **`OmniReplay-Setup.exe`**, **`OmniReplay.exe`**, `LICENSE`, and `LEGAL.md` to the GitHub Release for that tag.
+
+---
+
+## Repository layout
 
 | Path | Role |
 |------|------|
-| `dustreplay/` | Application source (`main.py`, UI, recorder, ffmpeg integration) |
-| `requirements.txt` | Runtime + PyInstaller |
-| `build.ps1` | Windows one-file executable build |
-| `instant_replay/` | Legacy admin wrappers (optional); prefer `build.ps1` |
+| [`dustreplay/`](dustreplay/) | Application source (`main.py`, recorder, UI, ffmpeg integration) |
+| [`requirements.txt`](requirements.txt) | Runtime + PyInstaller |
+| [`build.ps1`](build.ps1) | Windows build (PyInstaller + optional Inno installer) |
+| [`installer/`](installer/) | Inno Setup script for `OmniReplay-Setup.exe` |
 
-## Configuration highlights
+---
 
-| Key | Meaning |
-|-----|---------|
-| `buffer_minutes` | How far back segments are kept on disk |
-| `monitor_index` | **1-based** display index (matches the Settings list) |
-| `video_encoder` | `auto` / `nvenc` / `cpu` |
-| `hotkey_save`, `hotkey_toggle`, `panel_hotkey` | Passed to the `keyboard` library |
+## Tech stack (CV-friendly one-liner)
 
-## Open source & your CV
+Python 3.12 · CustomTkinter · ffmpeg (ddagrab / NVENC / libx264) · PyInstaller · global hotkeys (`keyboard`) · system tray (`pystray`).
 
-- **License**: [MIT](LICENSE) — free to use in portfolios and commercial projects with attribution.
-- **Suggested GitHub description**: *Windows instant replay app — rolling DXGI capture, ffmpeg NVENC/x264, global hotkeys (Python + CustomTkinter).*
-- Replace `Homepage` in `pyproject.toml` with your real repository URL before publishing.
+---
 
 ## Troubleshooting
 
-1. **Black / failed capture** — open `%APPDATA%\DustReplay\ffmpeg_stderr.log` after a failure.
-2. **Hotkeys dead** — run as Administrator; check `app.log` for registration errors.
-3. **NVENC errors on non-NVIDIA PCs** — set **Video encoder** to **CPU H.264** in Settings (or leave **Auto**).
+1. **Black or failed capture** — check `%APPDATA%\DustReplay\ffmpeg_stderr.log` after a failure.
+2. **Hotkeys not firing** — run as Administrator; see `app.log` for registration errors.
+3. **NVENC errors on non-NVIDIA machines** — set encoder to **CPU H.264** in Settings or leave **Auto**.
 
-## Disclaimer
+---
 
-This tool records the screen and audio. Only use it where you have permission to record. Not affiliated with NVIDIA, Microsoft, or ffmpeg upstream projects.
+## License and legal
+
+- **License:** [MIT](LICENSE)
+- **Disclaimer (plain language):** [LEGAL.md](LEGAL.md)
+
+Recording laws and third-party terms are **your** responsibility. The software is provided **as is** without warranty.
+
+---
+
+## Disclaimer (short)
+
+Use Omni Replay only where you are allowed to record screen and audio. Not affiliated with Microsoft, NVIDIA, or ffmpeg upstream.

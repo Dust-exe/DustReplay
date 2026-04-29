@@ -212,7 +212,6 @@ def _worker(recorder, minutes, on_done, on_error, watchdog=None):
             if on_error:
                 on_error("Wait for the first segment to finish, then try again.")
             return
-        # Small segments at startup are still valid if mux completed.
         MIN_SEG = 2048
         valid_segs = [s for s in segs if os.path.getsize(s) >= MIN_SEG]
         if not valid_segs:

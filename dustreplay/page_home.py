@@ -10,15 +10,16 @@ from PIL import Image
 
 import config
 import i18n
+import theme
 
-_BG = "#050508"
-_HV = "#0d0d1a"
-_CAR = "#0d0d1a"
-_SEP = "#1c1c2e"
-_P = "#8833ee"
-_WH = "#ffffff"
-_GR = "#888899"
-_RED = "#e03030"
+_BG = theme.BG
+_HV = theme.BACKDROP
+_CAR = theme.PANEL
+_SEP = theme.SEPARATOR
+_P = theme.P
+_WH = theme.TEXT
+_GR = theme.TEXT_DIM
+_RED = theme.RED
 
 
 class HomePage(ctk.CTkFrame):
@@ -165,17 +166,23 @@ class HomePage(ctk.CTkFrame):
         card = tk.Frame(self._gframe, bg=_CAR, cursor="hand2")
         card.pack(side="left", padx=3, pady=2)
 
-        tv = tk.Frame(card, bg="#111122", width=104, height=65)
+        tv = tk.Frame(card, bg=theme.ACCENT_DEEP, width=104, height=65)
         tv.pack(padx=2, pady=(2, 0))
         tv.pack_propagate(False)
-        pl = tk.Label(tv, text="\u25b6", font=("Segoe UI", 18), fg="#2a2a4a", bg="#111122")
+        pl = tk.Label(
+            tv,
+            text="\u25b6",
+            font=("Segoe UI", 18),
+            fg=theme.VERSION_MUTED,
+            bg=theme.ACCENT_DEEP,
+        )
         pl.place(relx=0.5, rely=0.5, anchor="center")
         tk.Label(
             tv,
             text=dur,
             font=("Segoe UI", 7, "bold"),
-            fg="white",
-            bg="#000000",
+            fg=theme.TEXT,
+            bg=theme.ACCENT_DEEP,
         ).place(relx=1.0, rely=1.0, anchor="se", x=-2, y=-1)
 
         dk = tk.Label(card, text=lbl, font=("Segoe UI", 8), fg=_GR, bg=_CAR)
@@ -416,7 +423,7 @@ class HomePage(ctk.CTkFrame):
             w.bind("<Button-1>", lambda e: self._open_stats())
 
         self.pb = ctk.CTkProgressBar(
-            sf, height=5, progress_color=_P, fg_color="#1a1a2e", corner_radius=3
+            sf, height=5, progress_color=_P, fg_color=theme.ACCENT_DEEP, corner_radius=3
         )
         self.pb.pack(fill="x", padx=12, pady=(0, 2))
         self.pb.set(0)
@@ -471,7 +478,9 @@ class HomePage(ctk.CTkFrame):
         tm, tss = divmod(int(ts), 60)
         self.bl.configure(text=f"{m}:{s:02d} / {tm}:{tss:02d}")
 
-    def show_info(self, msg, color="#4caf50"):
+    def show_info(self, msg, color=None):
+        if color is None:
+            color = theme.GREEN
         self.il.configure(text=msg, text_color=color)
         self.after(5000, lambda: self.il.configure(text=""))
 

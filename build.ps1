@@ -1,7 +1,4 @@
-# Build DustReplay.exe from the dustreplay/ source tree (PyInstaller one-file).
-# Default behavior: tries to pull latest code from git before building.
-# Use -NoUpdate to skip git pull.
-# Run in PowerShell:  cd ...\dasasd ; .\build.ps1
+# PyInstaller one-file + optional Inno Setup (OmniReplay-Setup.exe). Use -NoUpdate to skip git pull.
 
 param(
     [switch]$NoUpdate
@@ -64,7 +61,7 @@ $workDir = Join-Path $root 'build\pyinstaller_work'
 $specDir = Join-Path $root 'build'
 
 Write-Host ""
-Write-Host "  DustReplay build - PyInstaller" -ForegroundColor Magenta
+Write-Host "  Omni Replay build - PyInstaller" -ForegroundColor Magenta
 Write-Host "  Source: $pkg" -ForegroundColor DarkGray
 Write-Host ""
 
@@ -72,10 +69,10 @@ if (-not (Test-Path $pkg)) { throw "Missing folder: $pkg" }
 
 Push-Location $pkg
 try {
-    Write-Host "  [1/4] pip install..." -ForegroundColor Cyan
+    Write-Host "  [1/5] pip install..." -ForegroundColor Cyan
     & py -3.12 -m pip install -r (Join-Path $root 'requirements.txt') --upgrade
 
-    Write-Host "  [2/4] icon.ico..." -ForegroundColor Cyan
+    Write-Host "  [2/5] icon.ico..." -ForegroundColor Cyan
     if (Test-Path '_mkicon.py') { & py -3.12 _mkicon.py }
 
     New-Item -ItemType Directory -Force -Path $distDir | Out-Null
@@ -85,7 +82,7 @@ try {
     $pyiArgs = @(
         '-m', 'PyInstaller',
         '--onefile', '--noconsole',
-        '--name', 'DustReplay',
+        '--name', 'OmniReplay',
         '--distpath', $distDir,
         '--workpath', $workDir,
         '--specpath', $specDir,
@@ -102,32 +99,49 @@ try {
     if (Test-Path $ico) { $pyiArgs += "--icon=$ico" }
     $pyiArgs += 'main.py'
 
-    Write-Host "  [3/4] PyInstaller (may take several minutes)..." -ForegroundColor Cyan
+    Write-Host "  [3/5] PyInstaller (may take several minutes)..." -ForegroundColor Cyan
     & py -3.12 @pyiArgs
     if ($LASTEXITCODE -ne 0) { throw "PyInstaller exit $LASTEXITCODE" }
 
-    $exe = Join-Path $distDir 'DustReplay.exe'
+    $exe = Join-Path $distDir 'OmniReplay.exe'
     if (-not (Test-Path $exe)) { throw "Expected output missing: $exe" }
 
-    Write-Host "  [4/5] Stopping running DustReplay..." -ForegroundColor Cyan
+    $iscc = @(
+        (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'),
+        (Join-Path $env:ProgramFiles 'Inno Setup 6\ISCC.exe')
+    ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+    $iss = Join-Path $root 'installer\OmniReplay.iss'
+    if ($iscc -and (Test-Path $iss)) {
+        Write-Host "  [4/5] Inno Setup (dist\OmniReplay-Setup.exe)..." -ForegroundColor Cyan
+        & $iscc $iss
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "Inno Setup exited $LASTEXITCODE (installer may be missing)."
+        } else {
+            $setupExe = Join-Path $distDir 'OmniReplay-Setup.exe'
+            if (Test-Path $setupExe) { Write-Host "  Installer ready: $setupExe" -ForegroundColor Green }
+        }
+    } else {
+        Write-Host "  (Skip installer: install Inno Setup 6 for ISCC.exe, or see installer\README.md)" -ForegroundColor DarkYellow
+    }
+
+    Write-Host "  [5/5] Stopping running OmniReplay..." -ForegroundColor Cyan
     try {
-        $running = Get-Process -Name 'DustReplay' -ErrorAction SilentlyContinue
+        $running = Get-Process -Name 'OmniReplay' -ErrorAction SilentlyContinue
         if ($running) {
             $running | Stop-Process -Force -ErrorAction Stop
-            # Give Windows a moment to release the EXE lock before Desktop copy.
             Start-Sleep -Seconds 1
-            Write-Host "  Closed running DustReplay.exe" -ForegroundColor DarkGray
+            Write-Host "  Closed running OmniReplay.exe" -ForegroundColor DarkGray
         } else {
-            Write-Host "  DustReplay is not running." -ForegroundColor DarkGray
+            Write-Host "  OmniReplay is not running." -ForegroundColor DarkGray
         }
     }
     catch {
-        Write-Warning "Could not fully stop running DustReplay.exe. Build output is still ready."
+        Write-Warning "Could not fully stop running OmniReplay.exe. Build output is still ready."
     }
 
-    Write-Host "  [5/5] Copy to Desktop..." -ForegroundColor Cyan
+    Write-Host "  Copy to Desktop..." -ForegroundColor Cyan
     $desk = [Environment]::GetFolderPath('Desktop')
-    $deskExe = Join-Path $desk 'DustReplay.exe'
+    $deskExe = Join-Path $desk 'OmniReplay.exe'
     $copied = $false
     for ($i = 1; $i -le 5; $i++) {
         try {
@@ -138,7 +152,7 @@ try {
         catch {
             if ($i -ge 5) {
                 Write-Host ""
-                Write-Warning "Could not copy to Desktop after 5 tries. Close every DustReplay.exe (Task Manager), then copy manually from: $exe"
+                Write-Warning "Could not copy to Desktop after 5 tries. Close every OmniReplay.exe (Task Manager), then copy manually from: $exe"
                 Write-Warning "Desktop path used: $deskExe"
                 break
             }

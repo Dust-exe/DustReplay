@@ -2,7 +2,7 @@ import ctypes
 import logging
 import sys
 
-_m = ctypes.windll.kernel32.CreateMutexW(None, False, "DustReplayMutex_v4")
+_m = ctypes.windll.kernel32.CreateMutexW(None, False, "OmniReplayMutex_v1")
 if ctypes.windll.kernel32.GetLastError() == 183:
     sys.exit(0)
 
@@ -21,7 +21,7 @@ logger = logging.getLogger("main")
 
 
 def main():
-    logger.info("DustReplay starting…")
+    logger.info("%s starting…", config.APP_DISPLAY)
     ensure_ffmpeg()
     rec = Recorder()
     app = AppWindow(rec, watchdog=None)
@@ -35,7 +35,7 @@ def main():
     try:
         rec.start()
     except FileNotFoundError as e:
-        ctypes.windll.user32.MessageBoxW(0, str(e), "DustReplay", 0x10)
+        ctypes.windll.user32.MessageBoxW(0, str(e), config.APP_DISPLAY, 0x10)
         sys.exit(1)
     except Exception as e:
         logger.error("Could not start capture: %s", e)

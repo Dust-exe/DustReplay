@@ -1,5 +1,3 @@
-"""Hardware overlay: only enabled metrics (CPU/RAM/GPU/FPS), bar graphs + FPS sparkline."""
-
 from __future__ import annotations
 
 import logging
@@ -13,6 +11,7 @@ import customtkinter as ctk
 
 import config
 import i18n
+import theme
 
 logger = logging.getLogger(__name__)
 
@@ -21,14 +20,13 @@ try:
 except ImportError:
     psutil = None
 
-_BG = "#0a0612"
-_ROW = "#120818"
-_LBL = "#ffffff"
-_VAL = "#aa77ff"
-_BAR_BG = "#2a1a38"
+_BG = theme.BG
+_ROW = theme.PANEL
+_LBL = theme.TEXT
+_VAL = theme.TEXT_SOFT
+_BAR_BG = theme.ACCENT_DEEP
 _CORNERS = ("tl", "tr", "bl", "br")
 
-# Layout + size by mode (compact = small footprint + a bit more see-through via alpha_mul).
 _MODE_PRESETS: dict[str, dict] = {
     "compact": {
         "win_w": 196,
@@ -145,8 +143,6 @@ def _visible_series() -> list[str]:
 
 
 class StatsWindow(ctk.CTkToplevel):
-    """Borderless corner overlay. Close from Home (Statistics) tap again. No title-bar X."""
-
     def __init__(self, master, recorder, app_ref):
         super().__init__(master)
         self.recorder = recorder

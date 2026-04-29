@@ -1,11 +1,11 @@
 [project]
-name = "dustreplay"
-version = "3.1.0"
-description = "Windows instant replay — rolling screen buffer with global hotkeys (ffmpeg + GPU capture)"
+name = "omni-replay"
+version = "3.2.0"
+description = "Omni Replay — Windows instant replay with rolling buffer and global hotkeys (ffmpeg + GPU capture)"
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
-authors = [{ name = "DustReplay contributors" }]
+authors = [{ name = "Omni Replay contributors" }]
 keywords = ["screen-recording", "instant-replay", "windows", "ffmpeg", "nvenc"]
 dependencies = [
     "customtkinter>=5.2.0",
