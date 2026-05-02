@@ -55,6 +55,8 @@ To also build **`dist\DustReplay-Setup.exe`**, install [Inno Setup 6](https://jr
 
 Official binaries are produced by **GitHub Actions** when a maintainer pushes a **`v*`** version tag. See [`.github/workflows/release.yml`](.github/workflows/release.yml).
 
+If the **Releases** page stays empty: open **Settings → Actions → General** and ensure **Actions are allowed** for this repository (forks default to disabled until you enable them).
+
 1. Align versions in [`dustreplay/version.py`](dustreplay/version.py), [`pyproject.toml`](pyproject.toml), and `#define MyAppVersion` in [`installer/DustReplay.iss`](installer/DustReplay.iss).
 2. Commit, then: `git tag v3.2.2` and `git push origin v3.2.2` (example).
 
