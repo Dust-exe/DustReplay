@@ -1,0 +1,30 @@
+# Lightweight checks on every push to main — gives a green status on commits (like typical OSS repos).
+# Full Windows exe + installer still builds in release.yml on version tags only.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  compile:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Compile Python (syntax)
+        run: python -m compileall -q dustreplay

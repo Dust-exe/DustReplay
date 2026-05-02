@@ -37,14 +37,14 @@ jobs:
         working-directory: dustreplay
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path ../dist, ../build/pyinstaller_work, ../build | Out-Null
+          New-Item -ItemType Directory -Force -Path ../dist, ../build/pyinstaller_work | Out-Null
           $base = @(
             "-m", "PyInstaller",
             "--onefile", "--noconsole",
             "--name", "DustReplay",
             "--distpath", "../dist",
             "--workpath", "../build/pyinstaller_work",
-            "--specpath", "../build",
+            "--specpath", ".",
             "--hidden-import", "pystray._win32",
             "--hidden-import", "PIL._tkinter_finder",
             "--hidden-import", "monitors",
@@ -57,9 +57,7 @@ jobs:
             "--hidden-import", "theme"
           )
           if (Test-Path "icon.ico") {
-            # PyInstaller resolves --icon relative to --specpath; use absolute path (same as build.ps1).
-            $iconFull = (Resolve-Path "icon.ico").Path
-            python @base --icon="$iconFull" main.py
+            python @base --icon=icon.ico main.py
           } else {
             python @base main.py
           }
