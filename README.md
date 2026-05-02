@@ -1,8 +1,8 @@
-# Omni Replay
+# DustReplay
 
 Windows **instant replay**: a rolling screen buffer runs in the background. When something worth keeping happens, hit your **save hotkey** and the last *N* minutes are written to an MP4.
 
-**[Download the installer (Releases)](https://github.com/Dust-exe/omni-replay/releases)** — grab `OmniReplay-Setup.exe`, run it, and you are done (no Python or extra downloads required for end users).
+**[Download the installer (Releases)](https://github.com/Dust-exe/dustreplay/releases)** — grab `DustReplay-Setup.exe`, run it, and you are done (no Python or extra downloads required for end users).
 
 ---
 
@@ -17,11 +17,11 @@ Windows **instant replay**: a rolling screen buffer runs in the background. When
 
 ## Install (end users)
 
-1. Open **[Releases](https://github.com/Dust-exe/omni-replay/releases)**.
-2. Download **`OmniReplay-Setup.exe`**.
-3. Run the installer and start **Omni Replay** from the Start menu or desktop shortcut.
+1. Open **[Releases](https://github.com/Dust-exe/dustreplay/releases)**.
+2. Download **`DustReplay-Setup.exe`**.
+3. Run the installer and start **DustReplay** from the Start menu or desktop shortcut.
 
-First launch may download **ffmpeg** into `%APPDATA%\OmniReplay\` (one-time, on-demand).
+First launch may download **ffmpeg** into `%APPDATA%\DustReplay\` (one-time, on-demand).
 
 ---
 
@@ -35,7 +35,7 @@ py -3.12 -m pip install -r ..\requirements.txt
 py -3.12 main.py
 ```
 
-Settings and logs: `%APPDATA%\OmniReplay\` (`settings.json`, `app.log`, `ffmpeg_stderr.log` on errors).
+Settings and logs: `%APPDATA%\DustReplay\` (`settings.json`, `app.log`, `ffmpeg_stderr.log` on errors).
 
 ---
 
@@ -47,18 +47,18 @@ From the repo root:
 .\build.ps1
 ```
 
-Produces `dist\OmniReplay.exe` (PyInstaller one-file) and copies it to your Desktop when possible.
+Produces `dist\DustReplay.exe` (PyInstaller one-file) and copies it to your Desktop when possible.
 
-To also build **`dist\OmniReplay-Setup.exe`**, install [Inno Setup 6](https://jrsoftware.org/isdl.php); `build.ps1` detects `ISCC.exe` and compiles [`installer/OmniReplay.iss`](installer/OmniReplay.iss). Details: [`installer/README.md`](installer/README.md).
+To also build **`dist\DustReplay-Setup.exe`**, install [Inno Setup 6](https://jrsoftware.org/isdl.php); `build.ps1` detects `ISCC.exe` and compiles [`installer/DustReplay.iss`](installer/DustReplay.iss). Details: [`installer/README.md`](installer/README.md).
 
 ### Releases on GitHub (no local PC required for users)
 
 Official binaries are produced by **GitHub Actions** when a maintainer pushes a **`v*`** version tag. See [`.github/workflows/release.yml`](.github/workflows/release.yml).
 
-1. Align versions in [`dustreplay/version.py`](dustreplay/version.py), [`pyproject.toml`](pyproject.toml), and `#define MyAppVersion` in [`installer/OmniReplay.iss`](installer/OmniReplay.iss).
+1. Align versions in [`dustreplay/version.py`](dustreplay/version.py), [`pyproject.toml`](pyproject.toml), and `#define MyAppVersion` in [`installer/DustReplay.iss`](installer/DustReplay.iss).
 2. Commit, then: `git tag v3.2.1` and `git push origin v3.2.1`.
 
-The workflow uploads **`OmniReplay-Setup.exe`**, **`OmniReplay.exe`**, `LICENSE`, and `LEGAL.md` to the GitHub Release for that tag.
+The workflow uploads **`DustReplay-Setup.exe`**, **`DustReplay.exe`**, `LICENSE`, and `LEGAL.md` to the GitHub Release for that tag.
 
 ---
 
@@ -69,7 +69,7 @@ The workflow uploads **`OmniReplay-Setup.exe`**, **`OmniReplay.exe`**, `LICENSE`
 | [`dustreplay/`](dustreplay/) | Application source (`main.py`, recorder, UI, ffmpeg integration) |
 | [`requirements.txt`](requirements.txt) | Runtime + PyInstaller |
 | [`build.ps1`](build.ps1) | Windows build (PyInstaller + optional Inno installer) |
-| [`installer/`](installer/) | Inno Setup script for `OmniReplay-Setup.exe` |
+| [`installer/`](installer/) | Inno Setup script for `DustReplay-Setup.exe` |
 
 ---
 
@@ -98,4 +98,4 @@ Recording laws and third-party terms are **your** responsibility. The software i
 
 ## Disclaimer (short)
 
-Use Omni Replay only where you are allowed to record screen and audio. Not affiliated with Microsoft, NVIDIA, or ffmpeg upstream.
+Use DustReplay only where you are allowed to record screen and audio. Not affiliated with Microsoft, NVIDIA, or ffmpeg upstream.

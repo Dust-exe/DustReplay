@@ -77,7 +77,7 @@ def list_dshow_audio(ffmpeg_path):
                         devs.append(name)
     if not devs:
         logger.warning("Trying error-based dshow listing (fallback 2)")
-        r2 = _run([ffmpeg_path, "-f", "dshow", "-i", "audio=_OmniReplay_NoSuchDevice_"])
+        r2 = _run([ffmpeg_path, "-f", "dshow", "-i", "audio=_DustReplay_NoSuchDevice_"])
         if r2:
             text2 = _decode(r2.stderr) + _decode(r2.stdout)
             for line in text2.splitlines():

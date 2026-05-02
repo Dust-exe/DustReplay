@@ -1,4 +1,4 @@
-# PyInstaller one-file + optional Inno Setup (OmniReplay-Setup.exe). Use -NoUpdate to skip git pull.
+# PyInstaller one-file + optional Inno Setup (DustReplay-Setup.exe). Use -NoUpdate to skip git pull.
 
 param(
     [switch]$NoUpdate
@@ -61,7 +61,7 @@ $workDir = Join-Path $root 'build\pyinstaller_work'
 $specDir = Join-Path $root 'build'
 
 Write-Host ""
-Write-Host "  Omni Replay build - PyInstaller" -ForegroundColor Magenta
+Write-Host "  DustReplay build - PyInstaller" -ForegroundColor Magenta
 Write-Host "  Source: $pkg" -ForegroundColor DarkGray
 Write-Host ""
 
@@ -82,7 +82,7 @@ try {
     $pyiArgs = @(
         '-m', 'PyInstaller',
         '--onefile', '--noconsole',
-        '--name', 'OmniReplay',
+        '--name', 'DustReplay',
         '--distpath', $distDir,
         '--workpath', $workDir,
         '--specpath', $specDir,
@@ -103,45 +103,45 @@ try {
     & py -3.12 @pyiArgs
     if ($LASTEXITCODE -ne 0) { throw "PyInstaller exit $LASTEXITCODE" }
 
-    $exe = Join-Path $distDir 'OmniReplay.exe'
+    $exe = Join-Path $distDir 'DustReplay.exe'
     if (-not (Test-Path $exe)) { throw "Expected output missing: $exe" }
 
     $iscc = @(
         (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'),
         (Join-Path $env:ProgramFiles 'Inno Setup 6\ISCC.exe')
     ) | Where-Object { Test-Path $_ } | Select-Object -First 1
-    $iss = Join-Path $root 'installer\OmniReplay.iss'
+    $iss = Join-Path $root 'installer\DustReplay.iss'
     if ($iscc -and (Test-Path $iss)) {
-        Write-Host "  [4/5] Inno Setup (dist\OmniReplay-Setup.exe)..." -ForegroundColor Cyan
+        Write-Host "  [4/5] Inno Setup (dist\DustReplay-Setup.exe)..." -ForegroundColor Cyan
         & $iscc $iss
         if ($LASTEXITCODE -ne 0) {
             Write-Warning "Inno Setup exited $LASTEXITCODE (installer may be missing)."
         } else {
-            $setupExe = Join-Path $distDir 'OmniReplay-Setup.exe'
+            $setupExe = Join-Path $distDir 'DustReplay-Setup.exe'
             if (Test-Path $setupExe) { Write-Host "  Installer ready: $setupExe" -ForegroundColor Green }
         }
     } else {
         Write-Host "  (Skip installer: install Inno Setup 6 for ISCC.exe, or see installer\README.md)" -ForegroundColor DarkYellow
     }
 
-    Write-Host "  [5/5] Stopping running OmniReplay..." -ForegroundColor Cyan
+    Write-Host "  [5/5] Stopping running DustReplay..." -ForegroundColor Cyan
     try {
-        $running = Get-Process -Name 'OmniReplay' -ErrorAction SilentlyContinue
+        $running = Get-Process -Name 'DustReplay' -ErrorAction SilentlyContinue
         if ($running) {
             $running | Stop-Process -Force -ErrorAction Stop
             Start-Sleep -Seconds 1
-            Write-Host "  Closed running OmniReplay.exe" -ForegroundColor DarkGray
+            Write-Host "  Closed running DustReplay.exe" -ForegroundColor DarkGray
         } else {
-            Write-Host "  OmniReplay is not running." -ForegroundColor DarkGray
+            Write-Host "  DustReplay is not running." -ForegroundColor DarkGray
         }
     }
     catch {
-        Write-Warning "Could not fully stop running OmniReplay.exe. Build output is still ready."
+        Write-Warning "Could not fully stop running DustReplay.exe. Build output is still ready."
     }
 
     Write-Host "  Copy to Desktop..." -ForegroundColor Cyan
     $desk = [Environment]::GetFolderPath('Desktop')
-    $deskExe = Join-Path $desk 'OmniReplay.exe'
+    $deskExe = Join-Path $desk 'DustReplay.exe'
     $copied = $false
     for ($i = 1; $i -le 5; $i++) {
         try {
@@ -152,7 +152,7 @@ try {
         catch {
             if ($i -ge 5) {
                 Write-Host ""
-                Write-Warning "Could not copy to Desktop after 5 tries. Close every OmniReplay.exe (Task Manager), then copy manually from: $exe"
+                Write-Warning "Could not copy to Desktop after 5 tries. Close every DustReplay.exe (Task Manager), then copy manually from: $exe"
                 Write-Warning "Desktop path used: $deskExe"
                 break
             }

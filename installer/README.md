@@ -1,10 +1,10 @@
-# Windows installer (`OmniReplay-Setup.exe`)
+# Windows installer (`DustReplay-Setup.exe`)
 
-Official **`OmniReplay-Setup.exe`** for each release is built on **GitHub Actions** when a `v*` tag is pushed (see [`.github/workflows/release.yml`](../.github/workflows/release.yml)).
+Official **`DustReplay-Setup.exe`** for each release is built on **GitHub Actions** when a `v*` tag is pushed (see [`.github/workflows/release.yml`](../.github/workflows/release.yml)).
 
-Locally, [`../build.ps1`](../build.ps1) builds `dist\OmniReplay.exe` with PyInstaller, then (if available) runs **Inno Setup 6** to produce:
+Locally, [`../build.ps1`](../build.ps1) builds `dist\DustReplay.exe` with PyInstaller, then (if available) runs **Inno Setup 6** to produce:
 
-- `dist\OmniReplay-Setup.exe`
+- `dist\DustReplay-Setup.exe`
 
 ## Prerequisite
 
@@ -17,4 +17,4 @@ If Inno Setup is missing, the app exe still builds; only the installer step is s
 
 ## Version string
 
-Bump `#define MyAppVersion` in [`OmniReplay.iss`](OmniReplay.iss) together with [`dustreplay/version.py`](../dustreplay/version.py) and [`pyproject.toml`](../pyproject.toml) before a release.
+Bump `#define MyAppVersion` in [`DustReplay.iss`](DustReplay.iss) together with [`dustreplay/version.py`](../dustreplay/version.py) and [`pyproject.toml`](../pyproject.toml) before a release.

@@ -4,8 +4,8 @@ import os
 
 logger = logging.getLogger(__name__)
 
-APP_NAME = "OmniReplay"
-APP_DISPLAY = "Omni Replay"
+APP_NAME = "DustReplay"
+APP_DISPLAY = "DustReplay"
 APPDATA_DIR = os.path.join(os.getenv("APPDATA", os.path.expanduser("~")), APP_NAME)
 TEMP_DIR = os.path.join(APPDATA_DIR, "temp")
 LOG_DIR = APPDATA_DIR

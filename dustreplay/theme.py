@@ -1,4 +1,4 @@
-"""Omni Replay UI palette (#352F44 / #2A2438 / #411E8F / #310A5D)."""
+"""DustReplay UI palette (#352F44 / #2A2438 / #411E8F / #310A5D)."""
 
 BG = "#2A2438"
 PANEL = "#352F44"

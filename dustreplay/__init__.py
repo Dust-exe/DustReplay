@@ -1,1 +1,1 @@
-"""Omni Replay — Windows instant replay (rolling buffer) with global hotkeys."""
+"""DustReplay — Windows instant replay (rolling buffer) with global hotkeys."""

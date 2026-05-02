@@ -1,4 +1,4 @@
-"""Write icon.ico next to this script (black hole mark, Omni palette)."""
+"""Write icon.ico next to this script (black hole mark, DustReplay palette)."""
 
 import math
 

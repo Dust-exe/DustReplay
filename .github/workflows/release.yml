@@ -29,7 +29,7 @@ jobs:
         run: |
           if (Test-Path _mkicon.py) { python _mkicon.py }
 
-      - name: PyInstaller (OmniReplay.exe)
+      - name: PyInstaller (DustReplay.exe)
         working-directory: dustreplay
         shell: pwsh
         run: |
@@ -37,7 +37,7 @@ jobs:
           $base = @(
             "-m", "PyInstaller",
             "--onefile", "--noconsole",
-            "--name", "OmniReplay",
+            "--name", "DustReplay",
             "--distpath", "../dist",
             "--workpath", "../build/pyinstaller_work",
             "--specpath", "../build",
@@ -55,27 +55,27 @@ jobs:
           } else {
             python @base main.py
           }
-          if (-not (Test-Path ../dist/OmniReplay.exe)) { throw "PyInstaller did not produce dist/OmniReplay.exe" }
+          if (-not (Test-Path ../dist/DustReplay.exe)) { throw "PyInstaller did not produce dist/DustReplay.exe" }
 
       - name: Install Inno Setup
         shell: pwsh
         run: choco install innosetup -y --no-progress
 
-      - name: Inno Setup (OmniReplay-Setup.exe)
+      - name: Inno Setup (DustReplay-Setup.exe)
         shell: pwsh
         run: |
           $iscc = Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe"
           if (-not (Test-Path $iscc)) { $iscc = Join-Path $env:ProgramFiles "Inno Setup 6\ISCC.exe" }
           if (-not (Test-Path $iscc)) { throw "ISCC.exe not found after choco install innosetup" }
-          & $iscc (Join-Path $env:GITHUB_WORKSPACE "installer\OmniReplay.iss")
-          if (-not (Test-Path dist\OmniReplay-Setup.exe)) { throw "Inno Setup did not produce dist/OmniReplay-Setup.exe" }
+          & $iscc (Join-Path $env:GITHUB_WORKSPACE "installer\DustReplay.iss")
+          if (-not (Test-Path dist\DustReplay-Setup.exe)) { throw "Inno Setup did not produce dist/DustReplay-Setup.exe" }
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/OmniReplay.exe
-            dist/OmniReplay-Setup.exe
+            dist/DustReplay.exe
+            dist/DustReplay-Setup.exe
             LICENSE
             LEGAL.md
           generate_release_notes: true

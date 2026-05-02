@@ -1,8 +1,8 @@
-#define MyAppName "Omni Replay"
+#define MyAppName "DustReplay"
 #define MyAppVersion "3.2.0"
-#define MyAppPublisher "Omni Replay"
-#define MyAppURL "https://github.com/Dust-exe/omni-replay"
-#define MyAppExeName "OmniReplay.exe"
+#define MyAppPublisher "DustReplay"
+#define MyAppURL "https://github.com/Dust-exe/dustreplay"
+#define MyAppExeName "DustReplay.exe"
 
 [Setup]
 AppId={{D1F2A3B4-5C6D-7E8F-9012-3456789ABCDE}}
@@ -12,11 +12,11 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
-DefaultDirName={autopf}\OmniReplay
+DefaultDirName={autopf}\DustReplay
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 OutputDir=..\dist
-OutputBaseFilename=OmniReplay-Setup
+OutputBaseFilename=DustReplay-Setup
 SetupIconFile=..\dustreplay\icon.ico
 Compression=lzma2
 SolidCompression=yes

@@ -2,7 +2,7 @@ import ctypes
 import logging
 import sys
 
-_m = ctypes.windll.kernel32.CreateMutexW(None, False, "OmniReplayMutex_v1")
+_m = ctypes.windll.kernel32.CreateMutexW(None, False, "DustReplayMutex_v1")
 if ctypes.windll.kernel32.GetLastError() == 183:
     sys.exit(0)
 
