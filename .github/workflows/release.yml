@@ -78,22 +78,16 @@ jobs:
           $setup = Join-Path $env:GITHUB_WORKSPACE "dist\DustReplay-Setup.exe"
           if (-not (Test-Path $setup)) { throw "Inno Setup did not produce: $setup" }
 
-      - name: Verify release binaries exist
+      - name: Verify build outputs
         shell: pwsh
         run: |
           Get-ChildItem -LiteralPath (Join-Path $env:GITHUB_WORKSPACE "dist") | Format-Table Name, Length
-          $need = @(
-            "dist\DustReplay.exe",
-            "dist\DustReplay-Setup.exe",
-            "LICENSE",
-            "LEGAL.md"
-          )
-          foreach ($rel in $need) {
-            $p = Join-Path $env:GITHUB_WORKSPACE $rel
-            if (-not (Test-Path -LiteralPath $p)) { throw "Missing release artifact: $p" }
-          }
+          $exe = Join-Path $env:GITHUB_WORKSPACE "dist\DustReplay.exe"
+          $setup = Join-Path $env:GITHUB_WORKSPACE "dist\DustReplay-Setup.exe"
+          if (-not (Test-Path -LiteralPath $exe)) { throw "Missing PyInstaller output: $exe" }
+          if (-not (Test-Path -LiteralPath $setup)) { throw "Missing installer: $setup" }
 
-      - name: Publish GitHub Release (gh CLI)
+      - name: Publish GitHub Release (single installer exe)
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -101,28 +95,18 @@ jobs:
           Set-Location "${{ github.workspace }}"
           $tag = "${{ github.ref_name }}"
           $repo = "${{ github.repository }}"
-          foreach ($p in @("dist/DustReplay.exe", "dist/DustReplay-Setup.exe", "LICENSE", "LEGAL.md")) {
-            if (-not (Test-Path -LiteralPath $p)) { throw "Missing file for release: $p" }
-          }
+          $setup = "dist/DustReplay-Setup.exe"
+          if (-not (Test-Path -LiteralPath $setup)) { throw "Missing file for release: $setup" }
 
           gh release view $tag --repo $repo *> $null
           $releaseExists = $?
           if ($releaseExists) {
-            Write-Host "Release exists; uploading / replacing assets..."
-            gh release upload $tag `
-              "dist/DustReplay.exe" `
-              "dist/DustReplay-Setup.exe" `
-              "LICENSE" `
-              "LEGAL.md" `
-              --repo $repo --clobber
+            Write-Host "Release exists; replacing installer asset only..."
+            gh release upload $tag $setup --repo $repo --clobber
             if ($LASTEXITCODE -ne 0) { throw "gh release upload failed (exit $LASTEXITCODE)" }
           } else {
-            Write-Host "Creating new GitHub Release for tag $tag ..."
-            gh release create $tag `
-              "dist/DustReplay.exe" `
-              "dist/DustReplay-Setup.exe" `
-              "LICENSE" `
-              "LEGAL.md" `
+            Write-Host "Creating GitHub Release for tag $tag (installer only)..."
+            gh release create $tag $setup `
               --repo $repo `
               --title "DustReplay $tag" `
               --verify-tag `

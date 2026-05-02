@@ -2,7 +2,7 @@
 
 Windows **instant replay**: a rolling screen buffer runs in the background. When something worth keeping happens, hit your **save hotkey** and the last *N* minutes are written to an MP4.
 
-**[Download the installer (Releases)](https://github.com/Dust-exe/dustreplay/releases)** — grab **`DustReplay-Setup.exe`**. It installs the app **and a bundled ffmpeg** under Program Files, so the app is ready after install (no separate Python install and no first-run ffmpeg download for that path). Portable **`DustReplay.exe`** alone may still download ffmpeg once into `%APPDATA%\DustReplay\` if you do not use the installer.
+**[Download (Releases)](https://github.com/Dust-exe/dustreplay/releases)** — use **`DustReplay-Setup.exe` only** (one installer: app + bundled ffmpeg + LICENSE/LEGAL into Program Files). GitHub may still list auto-generated **Source code** zip/tar.gz on the release page; that is normal and cannot be removed via our workflow.
 
 ---
 
@@ -21,7 +21,7 @@ Windows **instant replay**: a rolling screen buffer runs in the background. When
 2. Download **`DustReplay-Setup.exe`**.
 3. Run the installer and start **DustReplay** from the Start menu or desktop shortcut.
 
-If you run **`DustReplay.exe`** without the installer, first launch may download **ffmpeg** into `%APPDATA%\DustReplay\` (one-time). The **Inno installer** avoids that by shipping ffmpeg next to the app.
+Developers who run **`dist\DustReplay.exe`** without the installer may get a one-time **ffmpeg** download into `%APPDATA%\DustReplay\`. End users should use **`DustReplay-Setup.exe`** only.
 
 ---
 
@@ -60,7 +60,7 @@ If the **Releases** page stays empty: open **Settings → Actions → General** 
 1. Align versions in [`dustreplay/version.py`](dustreplay/version.py), [`pyproject.toml`](pyproject.toml), and `#define MyAppVersion` in [`installer/DustReplay.iss`](installer/DustReplay.iss).
 2. Commit, then: `git tag v3.2.2` and `git push origin v3.2.2` (example).
 
-The workflow uploads **`DustReplay-Setup.exe`**, **`DustReplay.exe`**, `LICENSE`, and `LEGAL.md` to the GitHub Release for that tag.
+The release workflow uploads **`DustReplay-Setup.exe`** only (no separate portable exe or loose license files on the release).
 
 ---
 
