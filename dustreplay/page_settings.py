@@ -23,8 +23,7 @@ _STATS_MODE_ORDER = ("compact", "normal", "advanced")
 
 
 def _ffmpeg():
-    p = os.path.join(config.APPDATA_DIR, "ffmpeg", "ffmpeg.exe")
-    return p if os.path.isfile(p) else None
+    return config.resolve_ffmpeg_exe()
 
 
 def _get_monitors():
@@ -48,10 +47,7 @@ def _get_audio_devices_bg(callback):
         try:
             from audio_devices import list_all_audio
 
-            _ff = os.path.join(config.APPDATA_DIR, "ffmpeg", "ffmpeg.exe")
-            if not os.path.isfile(_ff):
-                _ff2 = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ffmpeg", "ffmpeg.exe")
-                _ff = _ff2 if os.path.isfile(_ff2) else "ffmpeg"
+            _ff = config.resolve_ffmpeg_exe() or "ffmpeg"
             _logger.info("ffmpeg for device list: %s", _ff)
             mic_items, sys_items = list_all_audio(_ff)
         except Exception as _e:

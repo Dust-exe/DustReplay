@@ -11,12 +11,9 @@ logger = logging.getLogger(__name__)
 
 
 def get_ffmpeg_path():
-    p = os.path.join(config.APPDATA_DIR, "ffmpeg", "ffmpeg.exe")
-    if os.path.isfile(p):
+    p = config.resolve_ffmpeg_exe()
+    if p:
         return p
-    d = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ffmpeg", "ffmpeg.exe")
-    if os.path.isfile(d):
-        return d
     raise FileNotFoundError(
         "ffmpeg.exe not found. Reinstall or run first-time setup again."
     )

@@ -2,6 +2,8 @@
 
 Official **`DustReplay-Setup.exe`** for each release is built on **GitHub Actions** when a `v*` tag is pushed (see [`.github/workflows/release.yml`](../.github/workflows/release.yml)).
 
+Before compiling the installer, [`bundle-ffmpeg.ps1`](bundle-ffmpeg.ps1) downloads **ffmpeg.exe** into `bundle\ffmpeg\` so **`DustReplay-Setup.exe`** is self-contained (no first-run ffmpeg download). `build.ps1` runs this step automatically.
+
 Locally, [`../build.ps1`](../build.ps1) builds `dist\DustReplay.exe` with PyInstaller, then (if available) runs **Inno Setup 6** to produce:
 
 - `dist\DustReplay-Setup.exe`

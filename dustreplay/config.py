@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import sys
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +77,29 @@ def get(key):
 
 def set(key, value):
     _cfg[key] = value
+
+
+def ffmpeg_exe_candidates():
+    """Paths to try for ffmpeg.exe (bundled next to frozen exe, then AppData, then dev tree)."""
+    paths = []
+    if getattr(sys, "frozen", False):
+        exe_dir = os.path.dirname(os.path.abspath(sys.executable))
+        paths.append(os.path.join(exe_dir, "ffmpeg", "ffmpeg.exe"))
+    paths.append(os.path.join(APPDATA_DIR, "ffmpeg", "ffmpeg.exe"))
+    try:
+        pkg = os.path.dirname(os.path.abspath(__file__))
+        paths.append(os.path.join(pkg, "ffmpeg", "ffmpeg.exe"))
+    except Exception:
+        pass
+    return paths
+
+
+def resolve_ffmpeg_exe():
+    """Return first existing ffmpeg.exe path, or None."""
+    for p in ffmpeg_exe_candidates():
+        if p and os.path.isfile(p):
+            return p
+    return None
 
 
 def migrate():

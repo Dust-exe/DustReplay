@@ -29,6 +29,10 @@ jobs:
         run: |
           if (Test-Path _mkicon.py) { python _mkicon.py }
 
+      - name: Bundle ffmpeg for offline installer
+        shell: pwsh
+        run: pwsh -File installer/bundle-ffmpeg.ps1
+
       - name: PyInstaller (DustReplay.exe)
         working-directory: dustreplay
         shell: pwsh

@@ -2,7 +2,7 @@
 
 Windows **instant replay**: a rolling screen buffer runs in the background. When something worth keeping happens, hit your **save hotkey** and the last *N* minutes are written to an MP4.
 
-**[Download the installer (Releases)](https://github.com/Dust-exe/dustreplay/releases)** — grab `DustReplay-Setup.exe`, run it, and you are done (no Python or extra downloads required for end users).
+**[Download the installer (Releases)](https://github.com/Dust-exe/dustreplay/releases)** — grab **`DustReplay-Setup.exe`**. It installs the app **and a bundled ffmpeg** under Program Files, so the app is ready after install (no separate Python install and no first-run ffmpeg download for that path). Portable **`DustReplay.exe`** alone may still download ffmpeg once into `%APPDATA%\DustReplay\` if you do not use the installer.
 
 ---
 
@@ -21,7 +21,7 @@ Windows **instant replay**: a rolling screen buffer runs in the background. When
 2. Download **`DustReplay-Setup.exe`**.
 3. Run the installer and start **DustReplay** from the Start menu or desktop shortcut.
 
-First launch may download **ffmpeg** into `%APPDATA%\DustReplay\` (one-time, on-demand).
+If you run **`DustReplay.exe`** without the installer, first launch may download **ffmpeg** into `%APPDATA%\DustReplay\` (one-time). The **Inno installer** avoids that by shipping ffmpeg next to the app.
 
 ---
 
@@ -56,7 +56,7 @@ To also build **`dist\DustReplay-Setup.exe`**, install [Inno Setup 6](https://jr
 Official binaries are produced by **GitHub Actions** when a maintainer pushes a **`v*`** version tag. See [`.github/workflows/release.yml`](.github/workflows/release.yml).
 
 1. Align versions in [`dustreplay/version.py`](dustreplay/version.py), [`pyproject.toml`](pyproject.toml), and `#define MyAppVersion` in [`installer/DustReplay.iss`](installer/DustReplay.iss).
-2. Commit, then: `git tag v3.2.1` and `git push origin v3.2.1`.
+2. Commit, then: `git tag v3.2.2` and `git push origin v3.2.2` (example).
 
 The workflow uploads **`DustReplay-Setup.exe`**, **`DustReplay.exe`**, `LICENSE`, and `LEGAL.md` to the GitHub Release for that tag.
 

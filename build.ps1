@@ -75,6 +75,15 @@ try {
     Write-Host "  [2/5] icon.ico..." -ForegroundColor Cyan
     if (Test-Path '_mkicon.py') { & py -3.12 _mkicon.py }
 
+    Write-Host "  [2b/5] ffmpeg bundle (for offline installer)..." -ForegroundColor Cyan
+    Pop-Location
+    try {
+        & (Join-Path $root 'installer\bundle-ffmpeg.ps1') -RepoRoot $root
+    }
+    finally {
+        Push-Location $pkg
+    }
+
     New-Item -ItemType Directory -Force -Path $distDir | Out-Null
     New-Item -ItemType Directory -Force -Path $workDir | Out-Null
     New-Item -ItemType Directory -Force -Path $specDir | Out-Null
@@ -112,6 +121,10 @@ try {
     ) | Where-Object { Test-Path $_ } | Select-Object -First 1
     $iss = Join-Path $root 'installer\DustReplay.iss'
     if ($iscc -and (Test-Path $iss)) {
+        $bff = Join-Path $root 'bundle\ffmpeg\ffmpeg.exe'
+        if (-not (Test-Path $bff)) {
+            throw "Missing bundled ffmpeg: $bff (installer step requires bundle-ffmpeg.ps1 to succeed)."
+        }
         Write-Host "  [4/5] Inno Setup (dist\DustReplay-Setup.exe)..." -ForegroundColor Cyan
         & $iscc $iss
         if ($LASTEXITCODE -ne 0) {

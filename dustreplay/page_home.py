@@ -204,8 +204,8 @@ class HomePage(ctk.CTkFrame):
         if fp in self._tcache:
             self._set_thumb(parent, self._tcache[fp], placeholder, open_cmd)
             return
-        ff = os.path.join(config.APPDATA_DIR, "ffmpeg", "ffmpeg.exe")
-        if not os.path.isfile(ff):
+        ff = config.resolve_ffmpeg_exe()
+        if not ff:
             return
         td = os.path.join(config.APPDATA_DIR, "thumbs")
         os.makedirs(td, exist_ok=True)

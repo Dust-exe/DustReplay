@@ -15,7 +15,7 @@ FFMPEG_EXE = os.path.join(config.APPDATA_DIR, "ffmpeg", "ffmpeg.exe")
 
 
 def ffmpeg_ready():
-    return os.path.isfile(FFMPEG_EXE)
+    return config.resolve_ffmpeg_exe() is not None
 
 
 def ensure_ffmpeg():

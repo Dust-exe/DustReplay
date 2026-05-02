@@ -14,13 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_ffmpeg_path():
-    p = os.path.join(config.APPDATA_DIR, "ffmpeg", "ffmpeg.exe")
-    if os.path.isfile(p):
-        return p
-    d = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ffmpeg", "ffmpeg.exe")
-    if os.path.isfile(d):
-        return d
-    return None
+    return config.resolve_ffmpeg_exe()
 
 
 def _ffprobe_path(ff: str) -> Optional[str]:
