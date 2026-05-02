@@ -31,7 +31,7 @@ jobs:
 
       - name: Bundle ffmpeg for offline installer
         shell: pwsh
-        run: pwsh -File installer/bundle-ffmpeg.ps1
+        run: pwsh -File installer/bundle-ffmpeg.ps1 -RepoRoot "${{ github.workspace }}"
 
       - name: PyInstaller (DustReplay.exe)
         working-directory: dustreplay
@@ -101,32 +101,31 @@ jobs:
           Set-Location "${{ github.workspace }}"
           $tag = "${{ github.ref_name }}"
           $repo = "${{ github.repository }}"
-          $assets = @(
-            "dist/DustReplay.exe",
-            "dist/DustReplay-Setup.exe",
-            "LICENSE",
-            "LEGAL.md"
-          )
-          foreach ($p in $assets) {
+          foreach ($p in @("dist/DustReplay.exe", "dist/DustReplay-Setup.exe", "LICENSE", "LEGAL.md")) {
             if (-not (Test-Path -LiteralPath $p)) { throw "Missing file for release: $p" }
           }
 
-          gh release view $tag --repo $repo 2>$null | Out-Null
-          if ($LASTEXITCODE -eq 0) {
+          gh release view $tag --repo $repo *> $null
+          $releaseExists = $?
+          if ($releaseExists) {
             Write-Host "Release exists; uploading / replacing assets..."
-            $up = @("release", "upload", $tag) + $assets + @("--repo", $repo, "--clobber")
-            & gh @up
+            gh release upload $tag `
+              "dist/DustReplay.exe" `
+              "dist/DustReplay-Setup.exe" `
+              "LICENSE" `
+              "LEGAL.md" `
+              --repo $repo --clobber
             if ($LASTEXITCODE -ne 0) { throw "gh release upload failed (exit $LASTEXITCODE)" }
           } else {
             Write-Host "Creating new GitHub Release for tag $tag ..."
-            $cr = @(
-              "release", "create", $tag
-            ) + $assets + @(
-              "--repo", $repo,
-              "--title", "DustReplay $tag",
-              "--verify-tag",
-              "--generate-notes"
-            )
-            & gh @cr
+            gh release create $tag `
+              "dist/DustReplay.exe" `
+              "dist/DustReplay-Setup.exe" `
+              "LICENSE" `
+              "LEGAL.md" `
+              --repo $repo `
+              --title "DustReplay $tag" `
+              --verify-tag `
+              --generate-notes
             if ($LASTEXITCODE -ne 0) { throw "gh release create failed (exit $LASTEXITCODE)" }
           }
