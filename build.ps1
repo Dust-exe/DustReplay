@@ -102,7 +102,9 @@ try {
         '--hidden-import', 'overlay',
         '--hidden-import', 'encoding',
         '--hidden-import', 'version',
-        '--hidden-import', 'stats_window'
+        '--hidden-import', 'stats_window',
+        '--hidden-import', 'i18n',
+        '--hidden-import', 'theme'
     )
     $ico = Join-Path $pkg 'icon.ico'
     if (Test-Path $ico) { $pyiArgs += "--icon=$ico" }

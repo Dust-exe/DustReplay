@@ -52,7 +52,9 @@ jobs:
             "--hidden-import", "overlay",
             "--hidden-import", "encoding",
             "--hidden-import", "version",
-            "--hidden-import", "stats_window"
+            "--hidden-import", "stats_window",
+            "--hidden-import", "i18n",
+            "--hidden-import", "theme"
           )
           if (Test-Path icon.ico) {
             python @base --icon=icon.ico main.py
@@ -71,15 +73,38 @@ jobs:
           $iscc = Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe"
           if (-not (Test-Path $iscc)) { $iscc = Join-Path $env:ProgramFiles "Inno Setup 6\ISCC.exe" }
           if (-not (Test-Path $iscc)) { throw "ISCC.exe not found after choco install innosetup" }
-          & $iscc (Join-Path $env:GITHUB_WORKSPACE "installer\DustReplay.iss")
-          if (-not (Test-Path dist\DustReplay-Setup.exe)) { throw "Inno Setup did not produce dist/DustReplay-Setup.exe" }
+          $iss = Join-Path $env:GITHUB_WORKSPACE "installer\DustReplay.iss"
+          & $iscc $iss
+          $setup = Join-Path $env:GITHUB_WORKSPACE "dist\DustReplay-Setup.exe"
+          if (-not (Test-Path $setup)) { throw "Inno Setup did not produce: $setup" }
+
+      - name: Verify release binaries exist
+        shell: pwsh
+        run: |
+          Get-ChildItem -LiteralPath (Join-Path $env:GITHUB_WORKSPACE "dist") | Format-Table Name, Length
+          $need = @(
+            "dist\DustReplay.exe",
+            "dist\DustReplay-Setup.exe",
+            "LICENSE",
+            "LEGAL.md"
+          )
+          foreach ($rel in $need) {
+            $p = Join-Path $env:GITHUB_WORKSPACE $rel
+            if (-not (Test-Path -LiteralPath $p)) { throw "Missing release artifact: $p" }
+          }
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
+          tag_name: ${{ github.ref_name }}
+          fail_on_unmatched_files: true
           files: |
             dist/DustReplay.exe
             dist/DustReplay-Setup.exe
             LICENSE
             LEGAL.md
           generate_release_notes: true
+          body: |
+            **Kurulum:** `DustReplay-Setup.exe` indirip çalıştırın (ffmpeg dahil, ek kurulum gerekmez).
+
+            **Portable:** `DustReplay.exe` — kurulumsuz; ffmpeg yoksa ilk açılışta indirebilir.
