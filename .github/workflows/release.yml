@@ -54,7 +54,9 @@ jobs:
             "--hidden-import", "version",
             "--hidden-import", "stats_window",
             "--hidden-import", "i18n",
-            "--hidden-import", "theme"
+            "--hidden-import", "theme",
+            "--hidden-import", "branding_paths",
+            "--add-data", "branding;branding"
           )
           if (Test-Path "icon.ico") {
             python @base --icon=icon.ico main.py

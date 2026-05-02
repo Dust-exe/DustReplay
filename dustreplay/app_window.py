@@ -7,6 +7,7 @@ import customtkinter as ctk
 import pystray
 from PIL import Image, ImageDraw
 
+import branding_paths
 import config
 import i18n
 import startup
@@ -33,12 +34,26 @@ _PANEL_W = 340
 
 def _ti(rec):
     sz = 64
-    img = Image.new("RGBA", (sz, sz), (0, 0, 0, 0))
+    bg = (42, 36, 56, 255)
+    img = Image.new("RGBA", (sz, sz), bg)
+    path = branding_paths.logo_png_path()
+    if os.path.isfile(path):
+        src = Image.open(path).convert("RGBA")
+        margin = 4
+        inner = sz - 2 * margin
+        src.thumbnail((inner, inner), Image.Resampling.NEAREST)
+        x = margin + (inner - src.width) // 2
+        y = margin + (inner - src.height) // 2
+        img.paste(src, (x, y), src)
+    else:
+        d0 = ImageDraw.Draw(img)
+        d0.ellipse([2, 2, sz - 2, sz - 2], fill=(49, 10, 93, 230))
     d = ImageDraw.Draw(img)
-    d.ellipse([2, 2, sz - 2, sz - 2], fill=(49, 10, 93, 230))
-    d.ellipse([14, 14, sz - 14, sz - 14], fill=(216, 80, 80) if rec else (90, 82, 110))
     if rec:
-        d.ellipse([26, 26, sz - 26, sz - 26], fill=(255, 120, 100))
+        d.ellipse([sz - 20, sz - 20, sz - 4, sz - 4], fill=(196, 68, 68, 255))
+        d.ellipse([sz - 17, sz - 17, sz - 7, sz - 7], fill=(255, 140, 130, 255))
+    else:
+        d.ellipse([sz - 18, sz - 18, sz - 6, sz - 6], fill=(110, 100, 128, 220))
     return img
 
 
@@ -127,12 +142,27 @@ class AppWindow(ctk.CTk):
         hdr = ctk.CTkFrame(p, fg_color=_SBG, corner_radius=0, height=52)
         hdr.pack(fill="x")
         hdr.pack_propagate(False)
+        self._hdr_logo_img = None
+        try:
+            lp = branding_paths.logo_png_path()
+            if os.path.isfile(lp):
+                pil = Image.open(lp).convert("RGBA").resize(
+                    (28, 28), Image.Resampling.NEAREST
+                )
+                self._hdr_logo_img = ctk.CTkImage(
+                    light_image=pil, dark_image=pil, size=(28, 28)
+                )
+                ctk.CTkLabel(hdr, image=self._hdr_logo_img, text="").pack(
+                    side="left", padx=(12, 6), pady=10
+                )
+        except Exception:
+            pass
         ctk.CTkLabel(
             hdr,
-            text=f"\u25cf  {config.APP_DISPLAY}",
+            text=config.APP_DISPLAY,
             font=ctk.CTkFont(size=15, weight="bold"),
             text_color=_P,
-        ).pack(side="left", padx=12, pady=14)
+        ).pack(side="left", padx=(0, 0), pady=14)
         self._badge = ctk.CTkLabel(
             hdr,
             text="LIVE",
@@ -410,7 +440,7 @@ class AppWindow(ctk.CTk):
             if self.rec_dot:
                 self.rec_dot.configure(
                     text="\u23fa" if self._recording else "\u25a0",
-                    text_color=theme.RED if self._recording else "#666677",
+                    text_color=theme.RED if self._recording else theme.TEXT_DIM,
                 )
             if self._badge:
                 self._badge.configure(
@@ -419,7 +449,7 @@ class AppWindow(ctk.CTk):
                         if self._recording
                         else i18n.t("badge.off")
                     ),
-                    fg_color=theme.RED if self._recording else "#555566",
+                    fg_color=theme.RED if self._recording else theme.VERSION_MUTED,
                 )
             if self._tray_icon:
                 ph = str(config.get("panel_hotkey")).upper()
