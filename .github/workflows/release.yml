@@ -56,8 +56,10 @@ jobs:
             "--hidden-import", "i18n",
             "--hidden-import", "theme"
           )
-          if (Test-Path icon.ico) {
-            python @base --icon=icon.ico main.py
+          if (Test-Path "icon.ico") {
+            # PyInstaller resolves --icon relative to --specpath; use absolute path (same as build.ps1).
+            $iconFull = (Resolve-Path "icon.ico").Path
+            python @base --icon="$iconFull" main.py
           } else {
             python @base main.py
           }
