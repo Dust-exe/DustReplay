@@ -98,6 +98,7 @@ class SettingsPage(ctk.CTkFrame):
 
         self._sec(s, "sec.display")
         self._monitor_dd(s)
+        self._flip_dd(s)
         self._sec(s, "sec.recording")
         self._encoder_dd(s)
         self._sld(s, "buffer_minutes", "rec.buffer", 5, 60, "rec.buffer.hint")
@@ -353,6 +354,47 @@ class SettingsPage(ctk.CTkFrame):
             dropdown_fg_color=theme.ACCENT_DEEP,
             width=220,
         ).pack(side="right", padx=12, pady=8)
+
+    def _res_cap_dd(self, p):
+        labels = i18n.res_cap_labels()
+        try:
+            cur_h = int(config.get("capture_max_height"))
+        except (TypeError, ValueError):
+            cur_h = 720
+        if cur_h not in _RES_CAP_VALUES:
+            cur_h = 720
+        cur_label = labels[_RES_CAP_VALUES.index(cur_h)]
+        r = ctk.CTkFrame(p, fg_color=_PD, corner_radius=8)
+        r.pack(fill="x", padx=8, pady=4)
+        ctk.CTkLabel(
+            r,
+            text=i18n.t("rec.res_cap"),
+            anchor="w",
+            text_color=theme.TEXT_SOFT,
+            font=ctk.CTkFont(size=12),
+        ).pack(side="left", padx=(12, 0), pady=12)
+        self._res_cap_var = ctk.StringVar(value=cur_label)
+        ctk.CTkOptionMenu(
+            r,
+            variable=self._res_cap_var,
+            values=labels,
+            fg_color=theme.PANEL,
+            button_color=_P,
+            button_hover_color=_PH,
+            dropdown_fg_color=theme.ACCENT_DEEP,
+            width=240,
+        ).pack(side="right", padx=12, pady=8)
+        hr = ctk.CTkFrame(p, fg_color="transparent")
+        hr.pack(fill="x", padx=14, pady=(0, 4))
+        ctk.CTkLabel(
+            hr,
+            text=i18n.t("rec.res_cap.hint"),
+            anchor="w",
+            font=ctk.CTkFont(size=11),
+            text_color=theme.TEXT_DIM,
+            wraplength=420,
+            justify="left",
+        ).pack(side="left")
 
     def _flip_dd(self, p):
         labels = i18n.flip_labels()
