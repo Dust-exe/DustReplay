@@ -91,13 +91,28 @@ Python 3.12 · CustomTkinter · ffmpeg (ddagrab / NVENC / libx264) · PyInstalle
 
 ## License and legal
 
-- **License:** [MIT](LICENSE)
-- **Disclaimer (plain language):** [LEGAL.md](LEGAL.md)
+| | |
+|---|---|
+| **License** | [MIT](LICENSE) |
+| **Full disclaimer** | [LEGAL.md](LEGAL.md) |
 
-Recording laws and third-party terms are **your** responsibility. The software is provided **as is** without warranty.
+**Data privacy — local only.**
+DustReplay does **not** collect, transmit, or upload any video, audio, or personal data to any server. All recordings stay exclusively on the user's local machine. No telemetry, no analytics, no network calls originating from this application.
+
+**User compliance.**
+By using this software you agree to comply with all applicable laws and regulations in your jurisdiction regarding screen and audio recording — including but not limited to wiretapping laws, **GDPR**, **KVKK**, and any platform-specific terms of service.
+
+**Third-party / DRM-protected content.**
+Recording copyright-protected or DRM-restricted material (e.g. streaming services such as Netflix, Disney+, beIN Connect) without authorisation is **strictly the user's responsibility**. The developers of DustReplay accept no liability for such use.
+
+**FFmpeg.**
+This project uses [ffmpeg](https://ffmpeg.org), which is subject to the **LGPL v2.1** (or GPL depending on build configuration). ffmpeg's own license terms apply independently of the MIT license covering DustReplay's source code. Bundled ffmpeg binaries are not modified; their license files are distributed alongside the installer.
+
+**Disclaimer.**
+The software is provided **"as is"** without warranty of any kind. The developers are not responsible for any legal issues, data loss, privacy violations, hardware damage, or other consequences arising from the use or misuse of this application.
 
 ---
 
 ## Disclaimer (short)
 
-Use DustReplay only where you are allowed to record screen and audio. Not affiliated with Microsoft, NVIDIA, or ffmpeg upstream.
+Use DustReplay only where you are legally permitted to record screen and audio. Not affiliated with Microsoft, NVIDIA, AMD, Intel, or the ffmpeg project.
