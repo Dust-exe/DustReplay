@@ -138,7 +138,10 @@ def _build_cmd(ff, single_output_path=None):
         _mh or "native",
         _flip or "none",
     )
-    dda_src = f"ddagrab=output_idx={dda_idx}:draw_mouse=1,hwdownload,format=bgra"
+    # Pass fps directly to ddagrab so it only captures at the target rate,
+    # instead of capturing at the full monitor refresh rate and dropping frames in software.
+    # This alone cuts GPU DDA work from ~144 ops/sec down to fps ops/sec.
+    dda_src = f"ddagrab=output_idx={dda_idx}:draw_mouse=1:framerate={fps},hwdownload,format=bgra"
 
     from audio_devices import WASAPI_IN, WASAPI_OUT
 

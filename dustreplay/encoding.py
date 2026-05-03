@@ -52,5 +52,6 @@ def use_nvenc(ff_path: str) -> bool:
 def video_encode_args(use_nvenc: bool, cq: str) -> list[str]:
     """ffmpeg arguments for H.264 video only (no audio)."""
     if use_nvenc:
-        return ["-c:v", "h264_nvenc", "-preset", "p1", "-cq", str(cq)]
+        # constqp: fixed QP — no rate-control overhead, lightest GPU encoder path.
+        return ["-c:v", "h264_nvenc", "-preset", "p1", "-rc", "constqp", "-qp", str(cq)]
     return ["-c:v", "libx264", "-preset", "ultrafast", "-crf", str(cq)]

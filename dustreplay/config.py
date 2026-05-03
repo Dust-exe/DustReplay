@@ -127,6 +127,12 @@ def migrate():
     if int(_cfg.get("monitor_index") or 1) < 1:
         _cfg["monitor_index"] = 1
         changed = True
+    try:
+        if int(_cfg.get("fps") or 20) > 30:
+            _cfg["fps"] = 30
+            changed = True
+    except (TypeError, ValueError):
+        pass
     if "video_encoder" not in _cfg:
         _cfg["video_encoder"] = "auto"
         changed = True
