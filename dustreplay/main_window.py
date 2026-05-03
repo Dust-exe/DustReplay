@@ -5,7 +5,7 @@ import datetime
 import os
 
 import customtkinter as ctk
-from PIL import Image
+from PIL import Image, ImageDraw
 
 import branding_paths
 import config
@@ -16,6 +16,34 @@ import thumb_cache
 _SIDEBAR_W = 190
 _P = theme.P
 _PH = theme.PH
+_THUMB_W = 280
+_THUMB_H = 158
+_CARD_BG = (14, 10, 22)
+
+
+def _placeholder_img() -> ctk.CTkImage:
+    """Dark background with centered white play-circle."""
+    img = Image.new("RGBA", (_THUMB_W, _THUMB_H), (*_CARD_BG, 255))
+    d = ImageDraw.Draw(img)
+    cx, cy, r = _THUMB_W // 2, _THUMB_H // 2, 30
+    d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=(255, 255, 255, 210))
+    tx = cx - 9
+    d.polygon([(tx, cy - 15), (tx, cy + 15), (cx + 19, cy)], fill=(*_CARD_BG, 255))
+    return ctk.CTkImage(light_image=img.convert("RGB"), dark_image=img.convert("RGB"),
+                        size=(_THUMB_W, _THUMB_H))
+
+
+def _thumb_with_play(pil: Image.Image) -> ctk.CTkImage:
+    """Blend frame at 50 % opacity and overlay play circle."""
+    pil = pil.convert("RGB").resize((_THUMB_W, _THUMB_H), Image.Resampling.LANCZOS)
+    bg = Image.new("RGB", pil.size, _CARD_BG)
+    blended = Image.blend(pil, bg, alpha=0.5)
+    d = ImageDraw.Draw(blended)
+    cx, cy, r = _THUMB_W // 2, _THUMB_H // 2, 30
+    d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=(255, 255, 255, 210))
+    tx = cx - 9
+    d.polygon([(tx, cy - 15), (tx, cy + 15), (cx + 19, cy)], fill=_CARD_BG)
+    return ctk.CTkImage(light_image=blended, dark_image=blended, size=(_THUMB_W, _THUMB_H))
 
 
 class _GalleryPage(ctk.CTkFrame):
@@ -75,9 +103,8 @@ class _GalleryPage(ctk.CTkFrame):
 
     def _set_thumb(self, card: ctk.CTkFrame, path: str):
         try:
-            pil = Image.open(path).convert("RGB")
-            pil.thumbnail((280, 158), Image.Resampling.LANCZOS)
-            img = ctk.CTkImage(light_image=pil, dark_image=pil, size=(pil.width, pil.height))
+            pil = Image.open(path)
+            img = _thumb_with_play(pil)
             lbl = card._thumb_lbl
             lbl.configure(image=img, text="")
             lbl._img = img
@@ -132,16 +159,17 @@ class _GalleryPage(ctk.CTkFrame):
             border_width=1,
             border_color=theme.ACCENT_DEEP,
         )
+        _ph = _placeholder_img()
         thumb_lbl = ctk.CTkLabel(
             card,
-            text="MP4",
-            font=ctk.CTkFont(size=12, weight="bold"),
-            text_color=theme.TEXT_DIM,
-            fg_color=theme.BACKDROP,
-            width=280,
-            height=158,
+            image=_ph,
+            text="",
+            fg_color="transparent",
+            width=_THUMB_W,
+            height=_THUMB_H,
             corner_radius=8,
         )
+        thumb_lbl._img = _ph
         thumb_lbl.pack(padx=8, pady=(8, 4), fill="x")
         card._thumb_lbl = thumb_lbl
 
