@@ -17,8 +17,11 @@ _NONE_MIC = "(No microphone)"
 _NONE_SYS = "(No system audio)"
 
 _ENC_VALUES = ["auto", "nvenc", "cpu"]
+_RES_CAP_VALUES = (0, 1080, 720, 540)
+_FLIP_VALUES = ("none", "vertical", "horizontal", "rotate180")
 
 _STATS_CORNER_ORDER = ("tl", "tr", "bl", "br")
+_IND_CORNER_ORDER = ("tl", "tr", "bl", "br")
 _STATS_MODE_ORDER = ("compact", "normal", "advanced")
 
 
@@ -98,8 +101,9 @@ class SettingsPage(ctk.CTkFrame):
         self._sec(s, "sec.recording")
         self._encoder_dd(s)
         self._sld(s, "buffer_minutes", "rec.buffer", 5, 60, "rec.buffer.hint")
-        self._sld(s, "fps", "rec.fps", 15, 60, "rec.fps.hint")
+        self._sld(s, "fps", "rec.fps", 10, 60, "rec.fps.hint")
         self._sld(s, "quality", "rec.quality", 18, 40, "rec.quality.hint")
+        self._res_cap_dd(s)
 
         self._sec(s, "sec.audio")
         self._audio_section(s)
@@ -115,6 +119,7 @@ class SettingsPage(ctk.CTkFrame):
 
         self._sec(s, "sec.indicator")
         self._tgl(s, "overlay_enabled", "ind.rec")
+        self._overlay_ind_corner_dd(s)
 
         self._sec(s, "sec.hardware")
         self._tgl(s, "stats_show_cpu", "hw.cpu")
@@ -169,6 +174,47 @@ class SettingsPage(ctk.CTkFrame):
         self.after(200, self._load_audio_async)
         if self.app:
             self.app.refresh_ui_language()
+
+    def _overlay_ind_corner_dd(self, p):
+        self._ind_corner_codes = list(_IND_CORNER_ORDER)
+        self._ind_corner_labels = [
+            i18n.t(f"hw.corner_{c}") for c in self._ind_corner_codes
+        ]
+        cur = (config.get("overlay_corner") or "tr").lower()
+        if cur not in self._ind_corner_codes:
+            cur = "tr"
+        cur_label = self._ind_corner_labels[self._ind_corner_codes.index(cur)]
+        r = ctk.CTkFrame(p, fg_color=_PD, corner_radius=8)
+        r.pack(fill="x", padx=8, pady=4)
+        ctk.CTkLabel(
+            r,
+            text=i18n.t("ind.corner"),
+            anchor="w",
+            text_color=theme.TEXT_SOFT,
+            font=ctk.CTkFont(size=12),
+        ).pack(side="left", padx=(12, 0), pady=12)
+        self._ind_corner_var = ctk.StringVar(value=cur_label)
+        ctk.CTkOptionMenu(
+            r,
+            variable=self._ind_corner_var,
+            values=self._ind_corner_labels,
+            fg_color=theme.PANEL,
+            button_color=_P,
+            button_hover_color=_PH,
+            dropdown_fg_color=theme.ACCENT_DEEP,
+            width=200,
+        ).pack(side="right", padx=12, pady=8)
+        hr = ctk.CTkFrame(p, fg_color="transparent")
+        hr.pack(fill="x", padx=14, pady=(0, 4))
+        ctk.CTkLabel(
+            hr,
+            text=i18n.t("ind.corner.hint"),
+            anchor="w",
+            font=ctk.CTkFont(size=11),
+            text_color=theme.TEXT_DIM,
+            wraplength=420,
+            justify="left",
+        ).pack(side="left")
 
     def _stats_mode_dd(self, p):
         self._stats_mode_codes = list(_STATS_MODE_ORDER)
@@ -307,6 +353,44 @@ class SettingsPage(ctk.CTkFrame):
             dropdown_fg_color=theme.ACCENT_DEEP,
             width=220,
         ).pack(side="right", padx=12, pady=8)
+
+    def _flip_dd(self, p):
+        labels = i18n.flip_labels()
+        cur = (config.get("capture_flip") or "none").lower().strip()
+        if cur not in _FLIP_VALUES:
+            cur = "none"
+        cur_label = labels[_FLIP_VALUES.index(cur)]
+        r = ctk.CTkFrame(p, fg_color=_PD, corner_radius=8)
+        r.pack(fill="x", padx=8, pady=4)
+        ctk.CTkLabel(
+            r,
+            text=i18n.t("disp.flip"),
+            anchor="w",
+            text_color=theme.TEXT_SOFT,
+            font=ctk.CTkFont(size=12),
+        ).pack(side="left", padx=(12, 0), pady=12)
+        self._flip_var = ctk.StringVar(value=cur_label)
+        ctk.CTkOptionMenu(
+            r,
+            variable=self._flip_var,
+            values=labels,
+            fg_color=theme.PANEL,
+            button_color=_P,
+            button_hover_color=_PH,
+            dropdown_fg_color=theme.ACCENT_DEEP,
+            width=240,
+        ).pack(side="right", padx=12, pady=8)
+        hr = ctk.CTkFrame(p, fg_color="transparent")
+        hr.pack(fill="x", padx=14, pady=(0, 4))
+        ctk.CTkLabel(
+            hr,
+            text=i18n.t("disp.flip.hint"),
+            anchor="w",
+            font=ctk.CTkFont(size=11),
+            text_color=theme.TEXT_DIM,
+            wraplength=420,
+            justify="left",
+        ).pack(side="left")
 
     def _audio_section(self, p):
         r1 = ctk.CTkFrame(p, fg_color=_PD, corner_radius=8)
@@ -577,6 +661,20 @@ class SettingsPage(ctk.CTkFrame):
         config.set("monitor_index", mon_idx)
 
         try:
+            flabels = i18n.flip_labels()
+            fi = flabels.index(self._flip_var.get())
+            config.set("capture_flip", _FLIP_VALUES[fi])
+        except (ValueError, AttributeError):
+            config.set("capture_flip", "none")
+
+        try:
+            rlabels = i18n.res_cap_labels()
+            ri = rlabels.index(self._res_cap_var.get())
+            config.set("capture_max_height", _RES_CAP_VALUES[ri])
+        except (ValueError, AttributeError):
+            config.set("capture_max_height", 720)
+
+        try:
             labels = i18n.encoder_labels()
             ei = labels.index(self._enc_var.get())
             config.set("video_encoder", _ENC_VALUES[ei])
@@ -598,6 +696,15 @@ class SettingsPage(ctk.CTkFrame):
             ):
                 ci = self._stats_corner_labels.index(self._stats_corner_var.get())
                 config.set("stats_overlay_corner", self._stats_corner_codes[ci])
+        except Exception:
+            pass
+
+        try:
+            if getattr(self, "_ind_corner_labels", None) and getattr(
+                self, "_ind_corner_var", None
+            ):
+                ii = self._ind_corner_labels.index(self._ind_corner_var.get())
+                config.set("overlay_corner", self._ind_corner_codes[ii])
         except Exception:
             pass
 

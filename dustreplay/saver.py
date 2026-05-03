@@ -93,6 +93,11 @@ def _merge_export(ff: str, lp: str, out: str, valid_segs: list) -> Tuple[bool, s
     use_nvenc = encoding.use_nvenc(ff)
     venc = encoding.video_encode_args(use_nvenc, cq)
     has_audio = _segment_has_audio(ff, valid_segs[0])
+    try:
+        abk = int(config.get("audio_bitrate_k") or 96)
+    except (TypeError, ValueError):
+        abk = 96
+    abk = max(64, min(abk, 320))
     cmd = [
         ff,
         "-y",
@@ -105,7 +110,7 @@ def _merge_export(ff: str, lp: str, out: str, valid_segs: list) -> Tuple[bool, s
         *venc,
     ]
     if has_audio:
-        cmd += ["-c:a", "aac", "-b:a", "128k"]
+        cmd += ["-c:a", "aac", "-b:a", f"{abk}k"]
     else:
         cmd += ["-an"]
     cmd += ["-movflags", "+faststart", out]
@@ -131,7 +136,7 @@ def _merge_export(ff: str, lp: str, out: str, valid_segs: list) -> Tuple[bool, s
             *venc2,
         ]
         if has_audio:
-            cmd2 += ["-c:a", "aac", "-b:a", "128k"]
+            cmd2 += ["-c:a", "aac", "-b:a", f"{abk}k"]
         else:
             cmd2 += ["-an"]
         cmd2 += ["-movflags", "+faststart", out]

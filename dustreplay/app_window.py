@@ -34,14 +34,14 @@ _PANEL_W = 340
 
 def _ti(rec):
     sz = 64
-    bg = (42, 36, 56, 255)
+    bg = (20, 16, 24, 255)
     img = Image.new("RGBA", (sz, sz), bg)
     path = branding_paths.logo_png_path()
     if os.path.isfile(path):
         src = Image.open(path).convert("RGBA")
         margin = 4
         inner = sz - 2 * margin
-        src.thumbnail((inner, inner), Image.Resampling.NEAREST)
+        src.thumbnail((inner, inner), Image.Resampling.LANCZOS)
         x = margin + (inner - src.width) // 2
         y = margin + (inner - src.height) // 2
         img.paste(src, (x, y), src)
@@ -139,7 +139,7 @@ class AppWindow(ctk.CTk):
         p.resizable(False, False)
         self._panel = p
 
-        hdr = ctk.CTkFrame(p, fg_color=_SBG, corner_radius=0, height=52)
+        hdr = ctk.CTkFrame(p, fg_color=theme.HEADER_BG, corner_radius=0, height=56)
         hdr.pack(fill="x")
         hdr.pack_propagate(False)
         self._hdr_logo_img = None
@@ -147,10 +147,10 @@ class AppWindow(ctk.CTk):
             lp = branding_paths.logo_png_path()
             if os.path.isfile(lp):
                 pil = Image.open(lp).convert("RGBA").resize(
-                    (28, 28), Image.Resampling.NEAREST
+                    (34, 34), Image.Resampling.LANCZOS
                 )
                 self._hdr_logo_img = ctk.CTkImage(
-                    light_image=pil, dark_image=pil, size=(28, 28)
+                    light_image=pil, dark_image=pil, size=(34, 34)
                 )
                 ctk.CTkLabel(hdr, image=self._hdr_logo_img, text="").pack(
                     side="left", padx=(12, 6), pady=10
@@ -160,8 +160,8 @@ class AppWindow(ctk.CTk):
         ctk.CTkLabel(
             hdr,
             text=config.APP_DISPLAY,
-            font=ctk.CTkFont(size=15, weight="bold"),
-            text_color=_P,
+            font=ctk.CTkFont(size=16, weight="bold"),
+            text_color=theme.TEXT,
         ).pack(side="left", padx=(0, 0), pady=14)
         self._badge = ctk.CTkLabel(
             hdr,
@@ -191,31 +191,6 @@ class AppWindow(ctk.CTk):
         self.rec_dot.pack(side="right", padx=2)
         ctk.CTkFrame(p, height=1, fg_color=theme.HEADER_LINE).pack(fill="x")
 
-        nav = ctk.CTkFrame(p, fg_color=_SBG, corner_radius=0, height=40)
-        nav.pack(fill="x")
-        nav.pack_propagate(False)
-        for label_key, key in (
-            ("nav.home", "home"),
-            ("nav.clips", "recordings"),
-            ("nav.settings", "settings"),
-        ):
-            label = i18n.t(label_key)
-            b = ctk.CTkButton(
-                nav,
-                text=label,
-                width=(_PANEL_W - 16) // 3,
-                height=30,
-                fg_color="transparent",
-                hover_color=theme.BTN_DARK,
-                text_color=theme.NAV_INACTIVE,
-                font=ctk.CTkFont(size=11),
-                corner_radius=6,
-                command=lambda k=key: self.sp(k),
-            )
-            b.pack(side="left", padx=2, pady=5)
-            self._nb[key] = b
-        ctk.CTkFrame(p, height=1, fg_color=theme.HEADER_LINE).pack(fill="x")
-
         self.content = ctk.CTkFrame(p, corner_radius=0, fg_color=_CBG)
         self.content.pack(fill="both", expand=True)
         self.pages = {
@@ -226,17 +201,103 @@ class AppWindow(ctk.CTk):
         for pg in self.pages.values():
             pg.place(relx=0, rely=0, relwidth=1, relheight=1)
         self.sp("home")
-        self.refresh_ui_language()
+
+        self._dock_outer = ctk.CTkFrame(p, fg_color=theme.DOCK_BG, corner_radius=0)
+        self._dock_outer.pack(side="bottom", fill="x")
+        self._dock_outer.grid_columnconfigure(0, weight=1)
+
+        self._dock_nav = ctk.CTkFrame(self._dock_outer, fg_color=theme.DOCK_BG)
+        self._nb = {}
+        for label_key, key in (
+            ("nav.home", "home"),
+            ("nav.clips", "recordings"),
+            ("nav.settings", "settings"),
+        ):
+            label = i18n.t(label_key)
+            b = ctk.CTkButton(
+                self._dock_nav,
+                text=label,
+                height=52,
+                fg_color=theme.DOCK_HANDLE,
+                hover_color=theme.BTN_DARK,
+                text_color=theme.NAV_INACTIVE,
+                font=ctk.CTkFont(size=14, weight="bold"),
+                corner_radius=12,
+                border_width=1,
+                border_color=theme.ACCENT_DEEP,
+                command=lambda k=key: self._dock_nav_select(k),
+            )
+            b.pack(fill="x", padx=10, pady=5)
+            self._nb[key] = b
+
+        self._dock_handle = ctk.CTkFrame(
+            self._dock_outer, fg_color=theme.DOCK_HANDLE, corner_radius=0, height=54
+        )
+        self._dock_handle.grid_propagate(False)
+        self._dock_toggle_btn = ctk.CTkButton(
+            self._dock_handle,
+            text="",
+            height=46,
+            corner_radius=14,
+            fg_color=theme.DOCK_BG,
+            hover_color=theme.BTN_DARK,
+            border_width=1,
+            border_color=theme.ACCENT,
+            font=ctk.CTkFont(size=13, weight="bold"),
+            command=self._toggle_dock_menu,
+        )
+        self._dock_toggle_btn.pack(fill="x", expand=True, padx=10, pady=4)
+        self._dock_nav_open = False
 
         from version import __version__
 
-        ctk.CTkLabel(
-            p,
+        self._dock_ver = ctk.CTkLabel(
+            self._dock_outer,
             text=f"v{__version__}",
             font=ctk.CTkFont(size=10),
             text_color=theme.VERSION_MUTED,
-            fg_color=_BG,
-        ).pack(side="bottom", pady=4)
+            fg_color=theme.DOCK_BG,
+        )
+        self._layout_dock_rows()
+        self._sync_dock_toggle_label()
+        self.refresh_ui_language()
+
+    def _layout_dock_rows(self):
+        if self._dock_nav_open:
+            self._dock_nav.grid(row=0, column=0, sticky="ew", padx=2, pady=(8, 4))
+            self._dock_handle.grid(row=1, column=0, sticky="ew")
+            self._dock_ver.grid(row=2, column=0, sticky="ew", pady=(0, 6))
+        else:
+            try:
+                self._dock_nav.grid_remove()
+            except Exception:
+                pass
+            self._dock_handle.grid(row=0, column=0, sticky="ew")
+            self._dock_ver.grid(row=1, column=0, sticky="ew", pady=(0, 6))
+
+    def _sync_dock_toggle_label(self):
+        if not getattr(self, "_dock_toggle_btn", None):
+            return
+        if self._dock_nav_open:
+            self._dock_toggle_btn.configure(text=i18n.t("nav.menu_close"))
+        else:
+            self._dock_toggle_btn.configure(text=i18n.t("nav.menu_open"))
+
+    def _toggle_dock_menu(self):
+        self._dock_nav_open = not self._dock_nav_open
+        self._layout_dock_rows()
+        self._sync_dock_toggle_label()
+
+    def _dock_collapse(self):
+        if not self._dock_nav_open:
+            return
+        self._dock_nav_open = False
+        self._layout_dock_rows()
+        self._sync_dock_toggle_label()
+
+    def _dock_nav_select(self, key):
+        self.sp(key)
+        self._dock_collapse()
 
     def sp(self, key):
         for k, pg in self.pages.items():
@@ -691,11 +752,13 @@ class AppWindow(ctk.CTk):
                 self.pages["home"].set_recording(True)
 
     def refresh_ui_language(self):
-        if not getattr(self, "_nb", None):
-            return
-        self._nb["home"].configure(text=i18n.t("nav.home"))
-        self._nb["recordings"].configure(text=i18n.t("nav.clips"))
-        self._nb["settings"].configure(text=i18n.t("nav.settings"))
+        if getattr(self, "_nb", None):
+            self._nb["home"].configure(text=i18n.t("nav.home"))
+            self._nb["recordings"].configure(text=i18n.t("nav.clips"))
+            self._nb["settings"].configure(text=i18n.t("nav.settings"))
+        self._sync_dock_toggle_label()
+        if self.pages.get("recordings") and hasattr(self.pages["recordings"], "refresh"):
+            self.pages["recordings"].refresh()
         if self.pages.get("home") and hasattr(self.pages["home"], "refresh_home_texts"):
             self.pages["home"].refresh_home_texts()
 

@@ -13,12 +13,15 @@ LOG_DIR = APPDATA_DIR
 _CFG_FILE = os.path.join(APPDATA_DIR, "settings.json")
 
 _DEFAULTS = {
-    "buffer_minutes": 20,
+    "buffer_minutes": 10,
     "segment_seconds": 10,
-    "fps": 30,
-    "quality": 28,
+    "fps": 20,
+    "quality": 36,
+    "capture_max_height": 720,
+    "audio_bitrate_k": 96,
     "video_encoder": "auto",
     "monitor_index": 1,
+    "capture_flip": "none",
     "mic_device": "",
     "sys_audio_device": "__wasapi_out__",
     "hotkey_save": "f9",
@@ -31,6 +34,7 @@ _DEFAULTS = {
     "crash_restart_delay": 3,
     "segment_cleanup_grace": 90,
     "overlay_enabled": True,
+    "overlay_corner": "tr",
     "overlay_x": 20,
     "overlay_y": 20,
     "overlay_monitor": 0,
@@ -134,6 +138,14 @@ def migrate():
         changed = True
     if "stats_overlay_mode" not in _cfg:
         _cfg["stats_overlay_mode"] = "normal"
+        changed = True
+    _allowed_flip = frozenset(("none", "vertical", "horizontal", "rotate180"))
+    if (_cfg.get("capture_flip") or "none") not in _allowed_flip:
+        _cfg["capture_flip"] = "none"
+        changed = True
+    _allowed_oc = frozenset(("tl", "tr", "bl", "br"))
+    if (_cfg.get("overlay_corner") or "tr") not in _allowed_oc:
+        _cfg["overlay_corner"] = "tr"
         changed = True
     if changed:
         try:

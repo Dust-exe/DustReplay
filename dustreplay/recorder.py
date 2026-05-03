@@ -72,6 +72,49 @@ def _find_dshow_sys_audio(ff, exclude_mic=""):
     return None
 
 
+def _capture_scale_filter() -> str:
+    """Even dimensions for yuv420p; max height caps pixels (less RAM/CPU for ffmpeg)."""
+    try:
+        max_h = int(config.get("capture_max_height") or 0)
+    except (TypeError, ValueError):
+        max_h = 0
+    if max_h <= 0:
+        return "scale=trunc(iw/2)*2:trunc(ih/2)*2"
+    max_h = max(240, min(max_h, 4320))
+    return f"scale=trunc(iw*min(1\\,{max_h}/ih)/2)*2:trunc(min(ih\\,{max_h})/2)*2"
+
+
+def _capture_flip_suffix() -> str:
+    """Extra video filters after scale for physically rotated / mirrored monitors."""
+    raw = (config.get("capture_flip") or "none").lower().strip()
+    if raw in ("none", "normal", "0", ""):
+        return ""
+    if raw in ("v", "vflip", "vertical", "flip_vertical", "invert_y", "ters", "up_down"):
+        return ",vflip"
+    if raw in ("h", "hflip", "horizontal", "flip_horizontal", "mirror", "invert_x", "ayna"):
+        return ",hflip"
+    if raw in (
+        "180",
+        "rotate180",
+        "rotate_180",
+        "both",
+        "invert",
+        "upside_down",
+        "flip_both",
+    ):
+        return ",vflip,hflip"
+    return ""
+
+
+def _audio_br() -> str:
+    try:
+        k = int(config.get("audio_bitrate_k") or 96)
+    except (TypeError, ValueError):
+        k = 96
+    k = max(64, min(k, 320))
+    return f"{k}k"
+
+
 def _build_cmd(ff, single_output_path=None):
     """Rolling buffer (segment mux) or one continuous MP4 when single_output_path is set."""
     pat = os.path.join(config.TEMP_DIR, "seg_%Y%m%d_%H%M%S.mp4")
@@ -82,11 +125,18 @@ def _build_cmd(ff, single_output_path=None):
 
     mon_idx = int(config.get("monitor_index") or 1)
     dda_idx = max(0, mon_idx - 1)
+    try:
+        _mh = int(config.get("capture_max_height") or 0)
+    except (TypeError, ValueError):
+        _mh = 0
+    _flip = (config.get("capture_flip") or "none").lower().strip()
     logger.info(
-        "Capture: ddagrab output_idx=%s (monitor_index=%s) nvenc=%s",
+        "Capture: ddagrab output_idx=%s (monitor_index=%s) nvenc=%s max_h=%s flip=%s",
         dda_idx,
         mon_idx,
         use_nvenc,
+        _mh or "native",
+        _flip or "none",
     )
     dda_src = f"ddagrab=output_idx={dda_idx}:draw_mouse=1,hwdownload,format=bgra"
 
@@ -110,7 +160,7 @@ def _build_cmd(ff, single_output_path=None):
             _devs = list_dshow_audio(ff)
             if _devs:
                 audio_in.append(
-                    ["-thread_queue_size", "4096", "-f", "dshow", "-i", f"audio={_devs[0]}"]
+                    ["-thread_queue_size", "2048", "-f", "dshow", "-i", f"audio={_devs[0]}"]
                 )
                 logger.info("Default mic: %s", _devs[0])
             else:
@@ -119,7 +169,7 @@ def _build_cmd(ff, single_output_path=None):
             logger.warning("Could not list microphones: %s", _e)
     elif mic:
         audio_in.append(
-            ["-thread_queue_size", "8192", "-f", "dshow", "-i", f"audio={mic}"]
+            ["-thread_queue_size", "4096", "-f", "dshow", "-i", f"audio={mic}"]
         )
 
     if sys_dev == WASAPI_OUT:
@@ -138,7 +188,7 @@ def _build_cmd(ff, single_output_path=None):
             audio_in.append(
                 [
                     "-thread_queue_size",
-                    "4096",
+                    "2048",
                     "-f",
                     "wasapi",
                     "-loopback",
@@ -153,7 +203,7 @@ def _build_cmd(ff, single_output_path=None):
                 audio_in.append(
                     [
                         "-thread_queue_size",
-                        "8192",
+                        "4096",
                         "-f",
                         "dshow",
                         "-i",
@@ -167,7 +217,7 @@ def _build_cmd(ff, single_output_path=None):
                 )
     elif sys_dev and sys_dev != mic:
         audio_in.append(
-            ["-thread_queue_size", "8192", "-f", "dshow", "-i", f"audio={sys_dev}"]
+            ["-thread_queue_size", "4096", "-f", "dshow", "-i", f"audio={sys_dev}"]
         )
     elif sys_dev and sys_dev == mic:
         logger.warning("System device same as mic; skipping duplicate")
@@ -177,9 +227,10 @@ def _build_cmd(ff, single_output_path=None):
         cmd += ai
 
     n = len(audio_in)
-    vconv = (
-        f"{dda_src},fps={fps},scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p[vout]"
-    )
+    _scale = _capture_scale_filter()
+    _flipx = _capture_flip_suffix()
+    vconv = f"{dda_src},fps={fps},{_scale}{_flipx},format=yuv420p[vout]"
+    _abr = _audio_br()
 
     if n == 2:
         fc = (
@@ -198,7 +249,7 @@ def _build_cmd(ff, single_output_path=None):
             "-c:a",
             "aac",
             "-b:a",
-            "128k",
+            _abr,
         ]
     elif n == 1:
         fc = f"{vconv};" f"[0:a]aresample=48000[aout]"
@@ -213,7 +264,7 @@ def _build_cmd(ff, single_output_path=None):
             "-c:a",
             "aac",
             "-b:a",
-            "128k",
+            _abr,
         ]
     else:
         fc = vconv

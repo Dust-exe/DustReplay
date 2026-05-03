@@ -44,5 +44,20 @@ Source: "..\LEGAL.md"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesnt
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
+[Code]
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssInstall then
+  begin
+    if DirExists(ExpandConstant('{app}')) then
+    begin
+      DelTree(ExpandConstant('{app}\ffmpeg'), True, True, True);
+      DeleteFile(ExpandConstant('{app}\{#MyAppExeName}'));
+      DeleteFile(ExpandConstant('{app}\LICENSE'));
+      DeleteFile(ExpandConstant('{app}\LEGAL.md'));
+    end;
+  end;
+end;
+
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait skipifsilent

@@ -7,6 +7,14 @@ _MSG = {
         "nav.home": "\U0001f3e0 Home",
         "nav.clips": "\U0001f3ac Clips",
         "nav.settings": "\u2699\ufe0f Settings",
+        "nav.menu_open": "\u2630  Menu",
+        "nav.menu_close": "\u2715  Close menu",
+        "rec.page_title": "\U0001f3ac  Recordings",
+        "rec.open_folder": "Open folder",
+        "rec.refresh": "Refresh",
+        "rec.empty": "\U0001f4c2  No recordings yet.",
+        "rec.play": "Play",
+        "rec.delete": "Delete",
         "badge.live": "LIVE",
         "badge.off": "OFF",
         "settings.title": "\u2699\ufe0f  Settings",
@@ -23,6 +31,12 @@ _MSG = {
         "sec.hardware": "\U0001f4ca  Hardware overlay",
         "sec.startup": "\U0001f680  Startup",
         "disp.capture": "Screen to capture",
+        "disp.flip": "Recording orientation",
+        "disp.flip.hint": "Use when the monitor is physically upside down or mirrored so the clip matches what you see. Try “Flip vertically” first for inverted mounts.",
+        "flip.none": "None (normal)",
+        "flip.vertical": "Flip vertically (up / down)",
+        "flip.horizontal": "Flip horizontally (mirror)",
+        "flip.rotate180": "180° (vertical + horizontal)",
         "rec.encoder": "Video encoder",
         "rec.buffer": "Rolling buffer (minutes)",
         "rec.buffer.hint": "Keeps this many minutes in memory; Save writes the same length to a file.",
@@ -30,6 +44,12 @@ _MSG = {
         "rec.fps.hint": "Higher = smoother but uses more CPU/GPU.",
         "rec.quality": "Video quality",
         "rec.quality.hint": "Lower number = sharper image and larger files. Range 18 (best) to 40 (smaller).",
+        "rec.res_cap": "Max capture height",
+        "rec.res_cap.hint": "Smaller than native = much less RAM/CPU in ffmpeg; replay is softer when scaled up.",
+        "rec.res_native": "Native (full monitor)",
+        "rec.res_1080": "Cap height 1080p",
+        "rec.res_720": "Cap height 720p (performance)",
+        "rec.res_540": "Cap height 540p",
         "enc.auto": "Auto (use GPU if available)",
         "enc.nvenc": "NVIDIA NVENC only",
         "enc.cpu": "CPU H.264",
@@ -47,7 +67,9 @@ _MSG = {
         "hk.panel": "Open / close panel (hotkey)",
         "out.folder": "Folder for replay files",
         "out.browse": "Browse",
-        "ind.rec": "Small REC dot on screen (drag to move; position is saved)",
+        "ind.rec": "Tiny purple recording dot on screen",
+        "ind.corner": "Dot corner",
+        "ind.corner.hint": "Fixed corner placement. On Windows the dot ignores the mouse so clicks reach windows underneath (e.g. close buttons).",
         "hw.cpu": "Show CPU usage",
         "hw.ram": "Show RAM usage",
         "hw.gpu": "Show GPU usage (NVIDIA: nvidia-smi)",
@@ -95,6 +117,14 @@ _MSG = {
         "nav.home": "\U0001f3e0 Ana Sayfa",
         "nav.clips": "\U0001f3ac Kayıtlar",
         "nav.settings": "\u2699\ufe0f Ayarlar",
+        "nav.menu_open": "\u2630  Menü",
+        "nav.menu_close": "\u2715  Menüyü kapat",
+        "rec.page_title": "\U0001f3ac  Kayıtlar",
+        "rec.open_folder": "Klasörü aç",
+        "rec.refresh": "Yenile",
+        "rec.empty": "\U0001f4c2  Henüz kayıt yok.",
+        "rec.play": "Oynat",
+        "rec.delete": "Sil",
         "badge.live": "CANLI",
         "badge.off": "KAPALI",
         "settings.title": "\u2699\ufe0f  Ayarlar",
@@ -111,6 +141,12 @@ _MSG = {
         "sec.hardware": "\U0001f4ca  Donanım paneli",
         "sec.startup": "\U0001f680  Başlangıç",
         "disp.capture": "Yakalanacak ekran",
+        "disp.flip": "Kayıt yönü düzeltmesi",
+        "disp.flip.hint": "Monitör fiziksel olarak ters veya aynalı montajlıysa kayıt ekrandaki gibi görünsün diye seçin. Ters monitörde çoğunlukla “Dikey çevir” işe yarar.",
+        "flip.none": "Yok (normal)",
+        "flip.vertical": "Dikey çevir (üst / alt)",
+        "flip.horizontal": "Yatay çevir (ayna)",
+        "flip.rotate180": "180° (dikey + yatay)",
         "rec.encoder": "Video kodlayıcı",
         "rec.buffer": "Yuvarlanan tampon (dakika)",
         "rec.buffer.hint": "Bu kadar dakika bellekte tutulur; Kaydet ile aynı süre dosyaya yazılır.",
@@ -118,6 +154,12 @@ _MSG = {
         "rec.fps.hint": "Yüksek = daha akıcı, daha çok CPU/GPU kullanır.",
         "rec.quality": "Video kalitesi",
         "rec.quality.hint": "Düşük sayı = daha net görüntü ve daha büyük dosya. 18 en iyi, 40 daha küçük dosya.",
+        "rec.res_cap": "Yakalama yüksekliği üst sınırı",
+        "rec.res_cap.hint": "Yerel çözünürlükten küçük = ffmpeg'de çok daha az RAM/CPU; büyütülünce yumuşak görünür.",
+        "rec.res_native": "Yerel (tam monitör)",
+        "rec.res_1080": "Yükseklik tavanı 1080p",
+        "rec.res_720": "Yükseklik tavanı 720p (performans)",
+        "rec.res_540": "Yükseklik tavanı 540p",
         "enc.auto": "Otomatik (varsa ekran kartı)",
         "enc.nvenc": "Yalnızca NVIDIA NVENC",
         "enc.cpu": "İşlemci H.264",
@@ -135,7 +177,9 @@ _MSG = {
         "hk.panel": "Paneli aç / kapat (kısayol)",
         "out.folder": "Kayıt dosyaları klasörü",
         "out.browse": "Gözat",
-        "ind.rec": "Küçük REC noktası (sürükleyerek taşı; konum kaydedilir)",
+        "ind.rec": "Ekranda minik mor kayıt noktası",
+        "ind.corner": "Nokta köşesi",
+        "ind.corner.hint": "Sabit köşe. Windows’ta nokta fareyi yok sayar; altındaki pencereye tıklanabilir (ör. kapat).",
         "hw.cpu": "CPU kullanımını göster",
         "hw.ram": "RAM kullanımını göster",
         "hw.gpu": "GPU kullanımını göster (NVIDIA: nvidia-smi)",
@@ -202,6 +246,24 @@ def t(key: str, **kwargs) -> str:
 
 def encoder_labels():
     return [t("enc.auto"), t("enc.nvenc"), t("enc.cpu")]
+
+
+def res_cap_labels():
+    return [
+        t("rec.res_native"),
+        t("rec.res_1080"),
+        t("rec.res_720"),
+        t("rec.res_540"),
+    ]
+
+
+def flip_labels():
+    return [
+        t("flip.none"),
+        t("flip.vertical"),
+        t("flip.horizontal"),
+        t("flip.rotate180"),
+    ]
 
 
 def panel_side_labels():

@@ -6,7 +6,7 @@ from PIL import Image
 
 from branding_paths import logo_png_path
 
-_BG = (42, 36, 56)  # #2A2438
+_BG = (20, 16, 24)  # theme.BG #141018
 _SIZES = (16, 32, 48, 64, 128, 256)
 
 
@@ -18,7 +18,7 @@ def _render_icon(sz: int) -> Image.Image:
     src = Image.open(path).convert("RGBA")
     margin = max(1, int(sz * 0.06))
     inner = sz - 2 * margin
-    src.thumbnail((inner, inner), Image.Resampling.NEAREST)
+    src.thumbnail((inner, inner), Image.Resampling.LANCZOS)
     x = margin + (inner - src.width) // 2
     y = margin + (inner - src.height) // 2
     out.paste(src, (x, y), src)
