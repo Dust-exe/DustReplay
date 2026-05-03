@@ -55,6 +55,7 @@ jobs:
             "--hidden-import", "stats_window",
             "--hidden-import", "i18n",
             "--hidden-import", "theme",
+            "--hidden-import", "thumb_cache",
             "--hidden-import", "branding_paths",
             "--add-data", "branding;branding"
           )
