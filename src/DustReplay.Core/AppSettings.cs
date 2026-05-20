@@ -6,7 +6,6 @@ namespace DustReplay.Core;
 public sealed class AppSettings
 {
     public int BufferMinutes { get; set; } = 10;
-    /// <summary>Longer segments = fewer mux boundaries (less glitch in games).</summary>
     public int SegmentSeconds { get; set; } = 30;
     public int Fps { get; set; } = 20;
     public int Quality { get; set; } = 36;
@@ -15,7 +14,6 @@ public sealed class AppSettings
     public string VideoEncoder { get; set; } = "auto";
     public int MonitorIndex { get; set; } = 1;
     public string CaptureFlip { get; set; } = "none";
-    /// <summary>ddagrab (GPU) or gdigrab (better for some fullscreen games).</summary>
     public string CaptureBackend { get; set; } = "ddagrab";
     public string MicDevice { get; set; } = "";
     public string SysAudioDevice { get; set; } = "__wasapi_out__";
@@ -24,13 +22,22 @@ public sealed class AppSettings
     public string PanelHotkey { get; set; } = "alt+c";
     public string PanelSide { get; set; } = "right";
     public string OutputDir { get; set; } = "";
-    /// <summary>Health check interval — not segment rotation.</summary>
+    [JsonPropertyName("watchdog_interval")]
     public int WatchdogIntervalSec { get; set; } = 2;
     public int MaxCrashCount { get; set; } = 10;
+    [JsonPropertyName("crash_restart_delay")]
     public int CrashRestartDelaySec { get; set; } = 1;
+    [JsonPropertyName("segment_cleanup_grace")]
     public int SegmentCleanupGraceSec { get; set; } = 90;
     public bool OverlayEnabled { get; set; } = true;
     public string OverlayCorner { get; set; } = "tr";
+    public bool StatsShowCpu { get; set; } = true;
+    public bool StatsShowRam { get; set; } = true;
+    public bool StatsShowGpu { get; set; } = true;
+    public bool StatsShowFps { get; set; } = true;
+    public string StatsOverlayCorner { get; set; } = "br";
+    public string StatsOverlayMode { get; set; } = "normal";
+    public double StatsOverlayAlpha { get; set; } = 0.78;
     public string UiLanguage { get; set; } = "tr";
 
     [JsonIgnore]
@@ -40,7 +47,8 @@ public sealed class AppSettings
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
         WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+        PropertyNameCaseInsensitive = true,
     };
 
     public static AppSettings Load()
@@ -59,7 +67,7 @@ public sealed class AppSettings
                 return Migrate(loaded);
             }
         }
-        catch { /* use defaults */ }
+        catch { /* defaults */ }
         return Migrate(s);
     }
 
@@ -80,6 +88,11 @@ public sealed class AppSettings
         if (string.IsNullOrEmpty(s.SysAudioDevice)) s.SysAudioDevice = "__wasapi_out__";
         if (s.CaptureBackend is not ("ddagrab" or "gdigrab"))
             s.CaptureBackend = "ddagrab";
+        var flips = new[] { "none", "vertical", "horizontal", "rotate180" };
+        if (!flips.Contains(s.CaptureFlip)) s.CaptureFlip = "none";
+        var corners = new[] { "tl", "tr", "bl", "br" };
+        if (!corners.Contains(s.OverlayCorner)) s.OverlayCorner = "tr";
+        if (!corners.Contains(s.StatsOverlayCorner)) s.StatsOverlayCorner = "br";
         return s;
     }
 }

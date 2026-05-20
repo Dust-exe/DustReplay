@@ -1,5 +1,7 @@
 using System.Drawing;
+using System.IO;
 using System.Windows;
+using DustReplay.App.Branding;
 using Hardcodet.Wpf.TaskbarNotification;
 
 namespace DustReplay.App.Services;
@@ -43,12 +45,26 @@ public sealed class TrayService : IDisposable
 
     public void UpdateIcon(bool recording)
     {
-        using var bmp = new Bitmap(32, 32);
-        using var g = Graphics.FromImage(bmp);
-        g.Clear(Color.FromArgb(20, 16, 28));
+        try
+        {
+            if (File.Exists(BrandingPaths.LogoPath))
+            {
+                using var src = new Bitmap(BrandingPaths.LogoPath);
+                using var bmp = new Bitmap(32, 32);
+                using var g = Graphics.FromImage(bmp);
+                g.Clear(Color.FromArgb(20, 16, 28));
+                g.DrawImage(src, 2, 2, 28, 28);
+                _icon.Icon = Icon.FromHandle(bmp.GetHicon());
+                return;
+            }
+        }
+        catch { /* fallback */ }
+        using var fb = new Bitmap(32, 32);
+        using var fg = Graphics.FromImage(fb);
+        fg.Clear(Color.FromArgb(20, 16, 28));
         using var brush = new SolidBrush(recording ? Color.FromArgb(139, 108, 240) : Color.Gray);
-        g.FillEllipse(brush, 6, 6, 20, 20);
-        _icon.Icon = Icon.FromHandle(bmp.GetHicon());
+        fg.FillEllipse(brush, 6, 6, 20, 20);
+        _icon.Icon = Icon.FromHandle(fb.GetHicon());
     }
 
     public void Notify(string title, string message) =>

@@ -4,6 +4,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using DustReplay.App.Branding;
+using DustReplay.App.Controls;
 using DustReplay.App.Services;
 using DustReplay.Core;
 
@@ -12,25 +14,31 @@ namespace DustReplay.App.UI;
 public partial class MainAppWindow : Window
 {
     private readonly AppHost _host;
+    private readonly Views.SettingsView _settingsPage;
 
     public MainAppWindow(AppHost host)
     {
         InitializeComponent();
         _host = host;
-        LoadSettingsUi();
-        RefreshGallery();
+        SidebarLogo.Source = BrandingPaths.LoadLogo(72);
+        _settingsPage = new Views.SettingsView(host);
+        _settingsPage.Visibility = Visibility.Collapsed;
+        var body = (Grid)((Grid)Content).Children[1];
+        var rightCol = (Grid)body.Children[1];
+        rightCol.Children.Add(_settingsPage);
         Hide();
     }
 
-    public void ShowAndFocus()
+    public void ShowAndFocus(bool openSettings = false)
     {
         Show();
         Activate();
+        if (openSettings) NavTo("settings");
+        else NavTo("gallery");
         RefreshGallery();
-        RefreshState();
     }
 
-    public void RefreshState() { /* bound in side panel */ }
+    public void RefreshState() { }
 
     public void RefreshGallery()
     {
@@ -38,42 +46,39 @@ public partial class MainAppWindow : Window
         var dir = _host.Settings.EffectiveOutputDir;
         if (!Directory.Exists(dir)) return;
         foreach (var f in Directory.GetFiles(dir, "*.mp4").OrderByDescending(File.GetLastWriteTime))
-        {
-            var card = new Border
-            {
-                Width = 220,
-                Margin = new Thickness(8),
-                Background = new SolidColorBrush(Color.FromRgb(20, 16, 32)),
-                CornerRadius = new CornerRadius(12),
-                BorderBrush = new SolidColorBrush(Color.FromRgb(75, 55, 136)),
-                BorderThickness = new Thickness(1),
-                Child = BuildCard(f),
-            };
-            GalleryItems.Items.Add(card);
-        }
+            GalleryItems.Items.Add(BuildCard(f));
     }
 
-    private UIElement BuildCard(string path)
+    private Border BuildCard(string path)
+    {
+        var card = new Border
+        {
+            Width = 220,
+            Margin = new Thickness(8),
+            Background = new SolidColorBrush(Color.FromRgb(20, 16, 32)),
+            CornerRadius = new CornerRadius(12),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(75, 55, 136)),
+            BorderThickness = new Thickness(1),
+            Child = BuildCardContent(path),
+            Cursor = System.Windows.Input.Cursors.Hand,
+        };
+        card.MouseLeftButtonUp += (_, _) =>
+            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+        return card;
+    }
+
+    private UIElement BuildCardContent(string path)
     {
         var sp = new StackPanel { Margin = new Thickness(10) };
-        var thumb = new Border
+        var grid = new Grid { Height = 120 };
+        grid.Children.Add(new Border { Background = new SolidColorBrush(Color.FromRgb(8, 6, 14)), CornerRadius = new CornerRadius(8) });
+        TryLoadThumb(grid, path);
+        grid.Children.Add(new PlayOverlay
         {
-            Height = 120,
-            Background = new SolidColorBrush(Color.FromRgb(8, 6, 14)),
-            CornerRadius = new CornerRadius(8),
-            Child = new Grid(),
-        };
-        var grid = (Grid)thumb.Child;
-        var play = new System.Windows.Shapes.Ellipse
-        {
-            Width = 44, Height = 44,
-            Fill = Brushes.White,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
-        };
-        grid.Children.Add(play);
-        TryLoadThumb(grid, path);
-        sp.Children.Add(thumb);
+        });
+        sp.Children.Add(grid);
         sp.Children.Add(new TextBlock
         {
             Text = Path.GetFileName(path),
@@ -82,11 +87,9 @@ public partial class MainAppWindow : Window
             Margin = new Thickness(0, 8, 0, 0),
             TextTrimming = TextTrimming.CharacterEllipsis,
         });
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 0) };
-        var playBtn = new Button { Content = "Oynat", Style = (Style)FindResource("GhostButton") };
+        var playBtn = new Button { Content = "Oynat", Style = (Style)FindResource("GhostButton"), Margin = new Thickness(0, 8, 0, 0) };
         playBtn.Click += (_, _) => Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
-        row.Children.Add(playBtn);
-        sp.Children.Add(row);
+        sp.Children.Add(playBtn);
         return sp;
     }
 
@@ -98,17 +101,19 @@ public partial class MainAppWindow : Window
         if (!File.Exists(jpg))
         {
             var ff = AppPaths.ResolveFfmpeg();
-            if (ff == null) return;
-            try
+            if (ff != null)
             {
-                Process.Start(new ProcessStartInfo(ff,
-                    $"-y -ss 0.35 -i \"{videoPath}\" -vframes 1 -vf scale=280:-1 \"{jpg}\"")
+                try
                 {
-                    CreateNoWindow = true,
-                    UseShellExecute = false,
-                })?.WaitForExit(8000);
+                    Process.Start(new ProcessStartInfo(ff,
+                        $"-y -ss 0.35 -i \"{videoPath}\" -vframes 1 -vf scale=280:-1 \"{jpg}\"")
+                    {
+                        CreateNoWindow = true,
+                        UseShellExecute = false,
+                    })?.WaitForExit(8000);
+                }
+                catch { /* ignore */ }
             }
-            catch { return; }
         }
         if (!File.Exists(jpg)) return;
         try
@@ -118,45 +123,25 @@ public partial class MainAppWindow : Window
             bmp.CacheOption = BitmapCacheOption.OnLoad;
             bmp.UriSource = new Uri(jpg);
             bmp.EndInit();
-            var img = new Image
+            grid.Children.Insert(0, new Image
             {
                 Source = bmp,
                 Stretch = Stretch.UniformToFill,
                 Opacity = 0.5,
-            };
-            grid.Children.Insert(0, img);
+            });
         }
         catch { /* ignore */ }
     }
 
-    private void LoadSettingsUi()
-    {
-        var s = _host.Settings;
-        FpsSlider.Value = s.Fps;
-        BufferSlider.Value = s.BufferMinutes;
-        SelectCombo(CaptureBackendBox, s.CaptureBackend);
-        SelectCombo(MaxHeightBox, s.CaptureMaxHeight.ToString());
-        SelectCombo(OverlayCornerBox, s.OverlayCorner);
-    }
+    private void Nav_Click(object sender, RoutedEventArgs e) =>
+        NavTo((string)((Button)sender).Tag);
 
-    private static void SelectCombo(ComboBox box, string tag)
+    private void NavTo(string tag)
     {
-        foreach (ComboBoxItem item in box.Items)
-        {
-            if ((item.Tag?.ToString() ?? "") == tag)
-            {
-                box.SelectedItem = item;
-                return;
-            }
-        }
-        if (box.Items.Count > 0) box.SelectedIndex = 0;
-    }
-
-    private void Nav_Click(object sender, RoutedEventArgs e)
-    {
-        var tag = (string)((Button)sender).Tag;
         PageGallery.Visibility = tag == "gallery" ? Visibility.Visible : Visibility.Collapsed;
-        PageSettings.Visibility = tag == "settings" ? Visibility.Visible : Visibility.Collapsed;
+        _settingsPage.Visibility = tag == "settings" ? Visibility.Visible : Visibility.Collapsed;
+        NavGallery.Background = tag == "gallery" ? (Brush)FindResource("AccentBrush") : Brushes.Transparent;
+        NavSettings.Background = tag == "settings" ? (Brush)FindResource("AccentBrush") : Brushes.Transparent;
     }
 
     private void Save_Click(object sender, RoutedEventArgs e) => _host.SaveReplay();
@@ -167,18 +152,6 @@ public partial class MainAppWindow : Window
         var d = _host.Settings.EffectiveOutputDir;
         Directory.CreateDirectory(d);
         Process.Start("explorer.exe", d);
-    }
-
-    private void SaveSettings_Click(object sender, RoutedEventArgs e)
-    {
-        var s = _host.Settings;
-        s.Fps = (int)FpsSlider.Value;
-        s.BufferMinutes = (int)BufferSlider.Value;
-        s.CaptureBackend = ((ComboBoxItem)CaptureBackendBox.SelectedItem).Tag?.ToString() ?? "ddagrab";
-        s.CaptureMaxHeight = int.Parse(((ComboBoxItem)MaxHeightBox.SelectedItem).Tag?.ToString() ?? "720");
-        s.OverlayCorner = ((ComboBoxItem)OverlayCornerBox.SelectedItem).Tag?.ToString() ?? "tr";
-        _host.ApplySettings(s);
-        MessageBox.Show("Ayarlar kaydedildi. Yakalama yeniden başlatıldı.", AppPaths.DisplayName);
     }
 
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)

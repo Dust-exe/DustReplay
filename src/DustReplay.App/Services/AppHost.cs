@@ -70,13 +70,13 @@ public sealed class AppHost
         });
     }
 
-    public void ToggleMainWindow()
+    public void ToggleMainWindow(bool openSettings = false)
     {
         Application.Current.Dispatcher.Invoke(() =>
         {
             if (_mainWindow == null) return;
-            if (_mainWindow.IsVisible) _mainWindow.Hide();
-            else _mainWindow.ShowAndFocus();
+            if (_mainWindow.IsVisible && !openSettings) _mainWindow.Hide();
+            else _mainWindow.ShowAndFocus(openSettings);
         });
     }
 
@@ -87,6 +87,7 @@ public sealed class AppHost
             {
                 _tray?.Notify(AppPaths.DisplayName, $"Saved: {Path.GetFileName(path)}");
                 _mainWindow?.RefreshGallery();
+                _sidePanel?.RefreshGallery();
             }),
             err => Application.Current.Dispatcher.Invoke(() =>
                 MessageBox.Show(err, AppPaths.DisplayName)));
