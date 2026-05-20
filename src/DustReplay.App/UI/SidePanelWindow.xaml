@@ -1,0 +1,47 @@
+<Window x:Class="DustReplay.App.UI.SidePanelWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="DustReplay" Width="340" WindowStyle="None" AllowsTransparency="True"
+        Background="#09070D" ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Border Grid.Row="0" Background="#070510" Padding="12,10">
+            <DockPanel>
+                <TextBlock Text="DustReplay" Foreground="{StaticResource TextBrush}"
+                           FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
+                <Border x:Name="LiveBadge" Background="#E05555" CornerRadius="8" Padding="8,2"
+                        Margin="8,0,0,0" HorizontalAlignment="Left">
+                    <TextBlock x:Name="LiveText" Text="CANLI" Foreground="White" FontSize="10" FontWeight="Bold"/>
+                </Border>
+                <Button Content="✕" DockPanel.Dock="Right" Width="32" Height="32"
+                        Style="{StaticResource GhostButton}" Click="Close_Click"/>
+            </DockPanel>
+        </Border>
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="12,8">
+            <StackPanel>
+                <Button Content="💾  Replay klibi kaydet (F9)" Style="{StaticResource PrimaryButton}"
+                        Margin="0,6" Click="Save_Click"/>
+                <Button Content="⏸  Yakalamayı duraklat (F10)" Style="{StaticResource GhostButton}"
+                        Margin="0,6" Click="Toggle_Click"/>
+                <Button Content="🎬  Kayıtlar klasörü" Style="{StaticResource GhostButton}"
+                        Margin="0,6" Click="OpenFolder_Click"/>
+                <Button Content="⊞  Uygulamayı aç (geniş pencere)" Style="{StaticResource GhostButton}"
+                        Margin="0,6" Click="OpenApp_Click"/>
+                <TextBlock x:Name="BufferText" Text="Buffer: —" Foreground="{StaticResource TextSoftBrush}"
+                           Margin="0,16,0,4" FontSize="12"/>
+                <ProgressBar x:Name="BufferBar" Height="6" Maximum="100" Value="0"
+                             Foreground="{StaticResource AccentBrush}" Background="#211C30"/>
+                <TextBlock x:Name="StatusText" Text="" Foreground="{StaticResource TextDimBrush}"
+                           FontSize="11" Margin="0,8,0,0"/>
+            </StackPanel>
+        </ScrollViewer>
+        <Border Grid.Row="2" Background="#080611" Padding="12,8">
+            <TextBlock x:Name="VersionText" HorizontalAlignment="Center"
+                       Foreground="{StaticResource TextDimBrush}" FontSize="10"/>
+        </Border>
+    </Grid>
+</Window>

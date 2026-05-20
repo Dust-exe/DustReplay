@@ -138,10 +138,13 @@ def _build_cmd(ff, single_output_path=None):
         _mh or "native",
         _flip or "none",
     )
-    # Pass fps directly to ddagrab so it only captures at the target rate,
-    # instead of capturing at the full monitor refresh rate and dropping frames in software.
-    # This alone cuts GPU DDA work from ~144 ops/sec down to fps ops/sec.
-    dda_src = f"ddagrab=output_idx={dda_idx}:draw_mouse=1:framerate={fps},hwdownload,format=bgra"
+    backend = (config.get("capture_backend") or "ddagrab").lower().strip()
+    if backend == "gdigrab":
+        dda_src = f"gdigrab=framerate={fps}:draw_mouse=1:desktop=1,format=bgra"
+        logger.info("Capture backend: gdigrab (game-friendly)")
+    else:
+        # Pass fps to ddagrab — capture at target rate, not full monitor refresh.
+        dda_src = f"ddagrab=output_idx={dda_idx}:draw_mouse=1:framerate={fps},hwdownload,format=bgra"
 
     from audio_devices import WASAPI_IN, WASAPI_OUT
 
@@ -281,9 +284,9 @@ def _build_cmd(ff, single_output_path=None):
             "segment",
             "-segment_time",
             str(config.get("segment_seconds")),
+            "-segment_format_options",
+            "flush_packets=1",
             "-strftime",
-            "1",
-            "-reset_timestamps",
             "1",
             pat,
         ]
@@ -458,6 +461,31 @@ class Recorder:
             if age < seg_dur:
                 segs = segs[:-1]
         return [s for s in segs if os.path.getmtime(s) >= cutoff]
+
+    def get_closed_segments_for_export(self, minutes=None):
+        """Export without stopping ffmpeg — keeps 24/7 buffer (no black gaps on save)."""
+        if self.manual_proc is not None and self.manual_proc.poll() is None:
+            logger.warning("get_closed_segments_for_export: skipped (manual recording active)")
+            return []
+        if minutes is None:
+            minutes = config.get("buffer_minutes")
+        cutoff = time.time() - (minutes * 60)
+        seg_dur = float(config.get("segment_seconds") or 30)
+        segs = sorted(
+            glob.glob(os.path.join(config.TEMP_DIR, "seg_*.mp4")),
+            key=os.path.getmtime,
+        )
+        if segs:
+            age = time.time() - os.path.getmtime(segs[-1])
+            if age < seg_dur + 2:
+                segs = segs[:-1]
+        result = [
+            s
+            for s in segs
+            if os.path.getmtime(s) >= cutoff and os.path.getsize(s) >= 2048
+        ]
+        logger.info("get_closed_segments_for_export: %s segments", len(result))
+        return result
 
     def cut_and_get_segments(self, minutes=None):
         if self.manual_proc is not None and self.manual_proc.poll() is None:

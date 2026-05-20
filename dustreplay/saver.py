@@ -196,7 +196,7 @@ def _worker(recorder, minutes, on_done, on_error, watchdog=None):
                 watchdog.set_paused(True)
             except Exception:
                 pass
-        segs = recorder.cut_and_get_segments(minutes)
+        segs = recorder.get_closed_segments_for_export(minutes)
         if watchdog:
             try:
                 watchdog.set_paused(False)

@@ -14,7 +14,8 @@ _CFG_FILE = os.path.join(APPDATA_DIR, "settings.json")
 
 _DEFAULTS = {
     "buffer_minutes": 10,
-    "segment_seconds": 10,
+    "segment_seconds": 30,
+    "capture_backend": "ddagrab",
     "fps": 20,
     "quality": 36,
     "capture_max_height": 720,
@@ -29,7 +30,7 @@ _DEFAULTS = {
     "panel_hotkey": "alt+c",
     "panel_side": "right",
     "output_dir": os.path.join(os.path.expanduser("~"), "Videos", APP_NAME),
-    "watchdog_interval": 5,
+    "watchdog_interval": 2,
     "max_crash_count": 10,
     "crash_restart_delay": 3,
     "segment_cleanup_grace": 90,
@@ -121,8 +122,14 @@ def migrate():
     if not _cfg.get("sys_audio_device"):
         _cfg["sys_audio_device"] = "__wasapi_out__"
         changed = True
-    if _cfg.get("segment_seconds", 10) > 15:
-        _cfg["segment_seconds"] = 10
+    try:
+        if int(_cfg.get("segment_seconds") or 30) < 15:
+            _cfg["segment_seconds"] = 30
+            changed = True
+    except (TypeError, ValueError):
+        pass
+    if "capture_backend" not in _cfg:
+        _cfg["capture_backend"] = "ddagrab"
         changed = True
     if int(_cfg.get("monitor_index") or 1) < 1:
         _cfg["monitor_index"] = 1

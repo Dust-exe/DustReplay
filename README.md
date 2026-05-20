@@ -8,7 +8,9 @@ Windows **instant replay**: a rolling screen buffer runs in the background. When
 
 ## Highlights
 
-- **DXGI capture** through ffmpeg (`ddagrab`), optional **mic + system audio** (WASAPI / DirectShow fallbacks).
+- **C# / WPF UI** (v3.3+) — modern desktop app; see [`README-CSharp.md`](README-CSharp.md) and `.\build-csharp.ps1`. Python UI remains in `dustreplay/`.
+- **24/7 rolling buffer** — save replay **without stopping** ffmpeg (fixes black gaps / stutter in games).
+- **DXGI capture** through ffmpeg (`ddagrab`), optional **gdigrab** for some fullscreen games; **mic + system audio** (WASAPI / DirectShow fallbacks).
 - **NVENC when available**, otherwise **CPU H.264** — encoder choice in Settings.
 - **Global hotkeys** for save, pause/resume capture, and panel toggle (re-register after settings change).
 - **Tray + side panel** (CustomTkinter), optional **REC** overlay, optional **hardware** strip (CPU/RAM/GPU/FPS).
