@@ -16,7 +16,9 @@ _PD = theme.PD
 _NONE_MIC = "(No microphone)"
 _NONE_SYS = "(No system audio)"
 
-_ENC_VALUES = ["auto", "nvenc", "cpu"]
+_ENC_VALUES = ["auto", "nvenc", "amf", "cpu"]
+_PROFILE_VALUES = ["balanced", "low_gpu"]
+_BACKEND_VALUES = ["ddagrab", "gdigrab"]
 _RES_CAP_VALUES = (0, 1080, 720, 540)
 _FLIP_VALUES = ("none", "vertical", "horizontal", "rotate180")
 
@@ -101,6 +103,8 @@ class SettingsPage(ctk.CTkFrame):
         self._flip_dd(s)
         self._sec(s, "sec.recording")
         self._encoder_dd(s)
+        self._buffer_profile_dd(s)
+        self._capture_backend_dd(s)
         self._sld(s, "buffer_minutes", "rec.buffer", 5, 60, "rec.buffer.hint")
         self._sld(s, "fps", "rec.fps", 10, 60, "rec.fps.hint")
         self._sld(s, "quality", "rec.quality", 18, 40, "rec.quality.hint")
@@ -301,6 +305,72 @@ class SettingsPage(ctk.CTkFrame):
             button_hover_color=_PH,
             dropdown_fg_color=theme.ACCENT_DEEP,
             width=220,
+        ).pack(side="right", padx=12, pady=8)
+
+    def _buffer_profile_dd(self, p):
+        labels = i18n.buffer_profile_labels()
+        cur = (config.get("buffer_encoder_profile") or "balanced").lower()
+        try:
+            ix = _PROFILE_VALUES.index(cur)
+        except ValueError:
+            ix = 0
+        r = ctk.CTkFrame(p, fg_color=_PD, corner_radius=8)
+        r.pack(fill="x", padx=8, pady=4)
+        ctk.CTkLabel(
+            r,
+            text=i18n.t("enc.profile"),
+            anchor="w",
+            text_color=theme.TEXT_SOFT,
+            font=ctk.CTkFont(size=12),
+        ).pack(side="left", padx=(12, 0), pady=12)
+        self._profile_var = ctk.StringVar(value=labels[ix])
+        ctk.CTkOptionMenu(
+            r,
+            variable=self._profile_var,
+            values=labels,
+            fg_color=theme.PANEL,
+            button_color=_P,
+            button_hover_color=_PH,
+            dropdown_fg_color=theme.ACCENT_DEEP,
+            width=220,
+        ).pack(side="right", padx=12, pady=8)
+
+    def _capture_backend_dd(self, p):
+        labels = i18n.capture_backend_labels()
+        cur = (config.get("capture_backend") or "ddagrab").lower()
+        try:
+            ix = _BACKEND_VALUES.index(cur)
+        except ValueError:
+            ix = 0
+        r = ctk.CTkFrame(p, fg_color=_PD, corner_radius=8)
+        r.pack(fill="x", padx=8, pady=4)
+        tf = ctk.CTkFrame(r, fg_color="transparent")
+        tf.pack(side="left", fill="both", expand=True, padx=(12, 0), pady=8)
+        ctk.CTkLabel(
+            tf,
+            text=i18n.t("rec.capture_backend"),
+            anchor="w",
+            text_color=theme.TEXT_SOFT,
+            font=ctk.CTkFont(size=12),
+        ).pack(fill="x")
+        ctk.CTkLabel(
+            tf,
+            text=i18n.t("rec.capture_backend.hint"),
+            anchor="w",
+            text_color=theme.TEXT_DIM,
+            font=ctk.CTkFont(size=10),
+            wraplength=280,
+        ).pack(fill="x")
+        self._backend_var = ctk.StringVar(value=labels[ix])
+        ctk.CTkOptionMenu(
+            r,
+            variable=self._backend_var,
+            values=labels,
+            fg_color=theme.PANEL,
+            button_color=_P,
+            button_hover_color=_PH,
+            dropdown_fg_color=theme.ACCENT_DEEP,
+            width=200,
         ).pack(side="right", padx=12, pady=8)
 
     def _panel_side_dd(self, p):
@@ -722,6 +792,20 @@ class SettingsPage(ctk.CTkFrame):
             config.set("video_encoder", _ENC_VALUES[ei])
         except ValueError:
             config.set("video_encoder", "auto")
+
+        try:
+            plabels = i18n.buffer_profile_labels()
+            pi = plabels.index(self._profile_var.get())
+            config.set("buffer_encoder_profile", _PROFILE_VALUES[pi])
+        except (ValueError, AttributeError):
+            config.set("buffer_encoder_profile", "balanced")
+
+        try:
+            blabels = i18n.capture_backend_labels()
+            bi = blabels.index(self._backend_var.get())
+            config.set("capture_backend", _BACKEND_VALUES[bi])
+        except (ValueError, AttributeError):
+            config.set("capture_backend", "ddagrab")
 
         from audio_devices import label_to_config
 

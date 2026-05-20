@@ -265,7 +265,29 @@ class AppWindow(ctk.CTk):
         self.after(0, self._main_window.toggle)
 
     def sp(self, key):
-        pass
+        """Open main window on gallery / recordings / settings (from Alt+C panel)."""
+        if self._main_window is None or not self._main_window.winfo_exists():
+            from main_window import MainWindow
+            self._main_window = MainWindow(self)
+        mw = self._main_window
+        page = key
+        if page == "recordings":
+            page = "recordings"
+        elif page == "settings":
+            page = "settings"
+        elif page in ("gallery", "home"):
+            page = "gallery"
+        else:
+            page = "gallery"
+
+        def _open():
+            if not mw.winfo_viewable():
+                mw.deiconify()
+                mw.lift()
+                mw.focus_force()
+            mw.show_page(page)
+
+        self.after(0, _open)
 
     def _panel_x(self):
         sw = self.winfo_screenwidth()
@@ -286,40 +308,9 @@ class AppWindow(ctk.CTk):
             return
         self.after(1, self._hide_panel)
 
-    def _on_panel_focus_out(self, event=None):
-        if not self._panel_visible:
-            return
-        self.after(120, self._check_panel_focus_lost)
-
-    def _check_panel_focus_lost(self):
-        if not self._panel_visible or not self._panel:
-            return
-        w = self.focus_get()
-        try:
-            if w is None:
-                self._hide_panel()
-                return
-            top = w.winfo_toplevel()
-            if top == self._panel:
-                return
-            sw = getattr(self, "_stats_win", None)
-            if sw is not None:
-                try:
-                    if sw.winfo_exists() and top == sw:
-                        return
-                except Exception:
-                    pass
-        except Exception:
-            pass
-        self._hide_panel()
-
     def _hide_panel(self):
         self._destroy_panel_backdrop()
         if self._panel:
-            try:
-                self._panel.unbind("<FocusOut>")
-            except Exception:
-                pass
             try:
                 self._panel.attributes("-alpha", 1.0)
             except Exception:
@@ -347,49 +338,35 @@ class AppWindow(ctk.CTk):
         self._destroy_panel_backdrop()
         bd = tk.Toplevel(self)
         bd.overrideredirect(True)
-        bd.attributes("-alpha", 0.0)
         bd.configure(bg=theme.BACKDROP)
-        bd.geometry(f"{sw}x{sh}+0+0")
+        bd.attributes("-alpha", 0.14)
         bd.attributes("-topmost", True)
         bd.bind("<Button-1>", self._close_panel_from_outside)
         self._panel_backdrop = bd
 
-        def _fade_bd(step=0):
-            a = min(0.14, (step + 1) * 0.035)
-            try:
-                bd.attributes("-alpha", a)
-            except Exception:
-                return
-            if a < 0.135:
-                bd.after(14, lambda: _fade_bd(step + 1))
-
-        _fade_bd(0)
-
         x = self._panel_x()
+        if config.get("panel_side") == "left":
+            bd_w, bd_x = sw - _PANEL_W, _PANEL_W
+        else:
+            bd_w, bd_x = sw - _PANEL_W, 0
+        bd.geometry(f"{bd_w}x{sh}+{bd_x}+0")
+
         self._panel.geometry(f"{_PANEL_W}x{sh}+{x}+0")
         self._panel.update_idletasks()
         self._panel.deiconify()
-        self._panel.lift()
-        self._panel.attributes("-topmost", True)
         _hide_from_taskbar(self._panel)
         _hide_from_taskbar(bd)
         try:
-            self._panel.attributes("-alpha", 0.0)
+            self._panel.attributes("-alpha", 1.0)
         except Exception:
             pass
-
-        def _fade_panel(pa=0.0):
-            np = min(1.0, pa + 0.2)
-            try:
-                self._panel.attributes("-alpha", np)
-            except Exception:
-                pass
-            if np < 1.0:
-                self._panel.after(18, lambda: _fade_panel(np))
-
-        _fade_panel(0.0)
+        self._panel.attributes("-topmost", True)
+        self._panel.lift()
+        try:
+            bd.lower(self._panel)
+        except Exception:
+            bd.attributes("-topmost", False)
         self._panel.focus_force()
-        self._panel.bind("<FocusOut>", self._on_panel_focus_out)
         self._panel_visible = True
 
     def _btray(self):

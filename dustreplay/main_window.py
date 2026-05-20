@@ -343,7 +343,6 @@ class MainWindow(ctk.CTkToplevel):
         ctk.CTkFrame(parent, height=1, fg_color=theme.SEPARATOR).pack(fill="x")
 
     def _bind_drag(self, widget):
-        widget.configure(cursor="fleur")
         widget.bind("<ButtonPress-1>", self._start_drag, add="+")
         widget.bind("<B1-Motion>", self._on_drag, add="+")
 
@@ -476,6 +475,12 @@ class MainWindow(ctk.CTkToplevel):
             pg.place(relx=0, rely=0, relwidth=1, relheight=1)
 
         self._nav("gallery")
+
+    def show_page(self, key: str):
+        """Public navigation (tray panel / sp())."""
+        if key not in self._pages:
+            key = "gallery"
+        self._nav(key)
 
     def _nav(self, key: str):
         for k, pg in self._pages.items():

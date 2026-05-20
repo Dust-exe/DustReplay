@@ -14,7 +14,7 @@
             <TextBlock Text="DustReplay" Foreground="{StaticResource TextBrush}"
                        FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
         </StackPanel>
-        <Border Grid.Column="1" Background="Transparent" Cursor="SizeAll"
+        <Border Grid.Column="1" Background="Transparent"
                 MouseLeftButtonDown="DragArea_MouseLeftButtonDown"/>
         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,4,0">
             <Button Content="&#xE921;" Style="{StaticResource PanelIconBtn}" Click="Minimize_Click"

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import config
 import encoding
 import glob
@@ -78,6 +80,8 @@ def _capture_scale_filter() -> str:
         max_h = int(config.get("capture_max_height") or 0)
     except (TypeError, ValueError):
         max_h = 0
+    if (config.get("buffer_encoder_profile") or "balanced").lower() == "low_gpu":
+        max_h = 540 if max_h <= 0 else min(max_h, 540)
     if max_h <= 0:
         return "scale=trunc(iw/2)*2:trunc(ih/2)*2"
     max_h = max(240, min(max_h, 4320))
@@ -119,9 +123,9 @@ def _build_cmd(ff, single_output_path=None):
     """Rolling buffer (segment mux) or one continuous MP4 when single_output_path is set."""
     pat = os.path.join(config.TEMP_DIR, "seg_%Y%m%d_%H%M%S.mp4")
     fps = str(config.get("fps"))
-    use_nvenc = encoding.use_nvenc(ff)
+    enc = encoding.resolve_buffer_encoder(ff)
     cq = str(config.get("quality"))
-    venc = encoding.video_encode_args(use_nvenc, cq)
+    venc = encoding.video_encode_args(enc, cq)
 
     mon_idx = int(config.get("monitor_index") or 1)
     dda_idx = max(0, mon_idx - 1)
@@ -131,10 +135,11 @@ def _build_cmd(ff, single_output_path=None):
         _mh = 0
     _flip = (config.get("capture_flip") or "none").lower().strip()
     logger.info(
-        "Capture: ddagrab output_idx=%s (monitor_index=%s) nvenc=%s max_h=%s flip=%s",
+        "Capture: backend=%s output_idx=%s (monitor_index=%s) encoder=%s max_h=%s flip=%s",
+        (config.get("capture_backend") or "ddagrab"),
         dda_idx,
         mon_idx,
-        use_nvenc,
+        enc,
         _mh or "native",
         _flip or "none",
     )
@@ -235,7 +240,10 @@ def _build_cmd(ff, single_output_path=None):
     n = len(audio_in)
     _scale = _capture_scale_filter()
     _flipx = _capture_flip_suffix()
-    vconv = f"{dda_src},fps={fps},{_scale}{_flipx},format=yuv420p[vout]"
+    if backend == "gdigrab":
+        vconv = f"{dda_src},fps={fps},{_scale}{_flipx},format=yuv420p[vout]"
+    else:
+        vconv = f"{dda_src},{_scale}{_flipx},format=yuv420p[vout]"
     _abr = _audio_br()
 
     if n == 2:
@@ -462,6 +470,59 @@ class Recorder:
                 segs = segs[:-1]
         return [s for s in segs if os.path.getmtime(s) >= cutoff]
 
+    _TAIL_MIN_BYTES = 50_000
+    _TAIL_MIN_AGE = 3.0
+
+    def try_copy_tail_segment(self) -> str | None:
+        """Copy the in-progress last segment without stopping the buffer."""
+        segs = sorted(
+            glob.glob(os.path.join(config.TEMP_DIR, "seg_*.mp4")),
+            key=os.path.getmtime,
+        )
+        if not segs:
+            return None
+        last = segs[-1]
+        try:
+            if os.path.getsize(last) < self._TAIL_MIN_BYTES:
+                return None
+        except OSError:
+            return None
+        dst = os.path.join(config.TEMP_DIR, f"_tail_export_{int(time.time())}.mp4")
+        try:
+            ff = get_ffmpeg_path()
+        except FileNotFoundError:
+            return None
+        try:
+            r = subprocess.run(
+                [
+                    ff,
+                    "-y",
+                    "-loglevel",
+                    "error",
+                    "-i",
+                    last,
+                    "-c",
+                    "copy",
+                    "-movflags",
+                    "+faststart",
+                    dst,
+                ],
+                capture_output=True,
+                timeout=45,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
+            if r.returncode == 0 and os.path.getsize(dst) >= 2048:
+                logger.info("Tail segment copied for export: %s", os.path.basename(dst))
+                return dst
+        except Exception as e:
+            logger.debug("Tail copy failed: %s", e)
+        try:
+            if os.path.isfile(dst):
+                os.remove(dst)
+        except OSError:
+            pass
+        return None
+
     def get_closed_segments_for_export(self, minutes=None):
         """Export without stopping ffmpeg — keeps 24/7 buffer (no black gaps on save)."""
         if self.manual_proc is not None and self.manual_proc.poll() is None:
@@ -470,14 +531,17 @@ class Recorder:
         if minutes is None:
             minutes = config.get("buffer_minutes")
         cutoff = time.time() - (minutes * 60)
-        seg_dur = float(config.get("segment_seconds") or 30)
         segs = sorted(
             glob.glob(os.path.join(config.TEMP_DIR, "seg_*.mp4")),
             key=os.path.getmtime,
         )
         if segs:
             age = time.time() - os.path.getmtime(segs[-1])
-            if age < seg_dur + 2:
+            try:
+                size = os.path.getsize(segs[-1])
+            except OSError:
+                size = 0
+            if age < self._TAIL_MIN_AGE and size < self._TAIL_MIN_BYTES:
                 segs = segs[:-1]
         result = [
             s
@@ -486,6 +550,25 @@ class Recorder:
         ]
         logger.info("get_closed_segments_for_export: %s segments", len(result))
         return result
+
+    def get_segments_for_export(self, minutes=None):
+        """Closed segments plus tail of the current open segment when possible."""
+        closed = self.get_closed_segments_for_export(minutes)
+        all_segs = sorted(
+            glob.glob(os.path.join(config.TEMP_DIR, "seg_*.mp4")),
+            key=os.path.getmtime,
+        )
+        if not all_segs:
+            return closed
+        last = all_segs[-1]
+        if last in closed:
+            return closed
+        tail = self.try_copy_tail_segment()
+        if tail:
+            return closed + [tail]
+        logger.warning("Tail copy failed; rolling buffer segment for export")
+        rollover = self.cut_and_get_segments(minutes)
+        return rollover if rollover else closed
 
     def cut_and_get_segments(self, minutes=None):
         if self.manual_proc is not None and self.manual_proc.poll() is None:

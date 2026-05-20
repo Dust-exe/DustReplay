@@ -14,13 +14,14 @@ _CFG_FILE = os.path.join(APPDATA_DIR, "settings.json")
 
 _DEFAULTS = {
     "buffer_minutes": 10,
-    "segment_seconds": 30,
+    "segment_seconds": 15,
     "capture_backend": "ddagrab",
     "fps": 20,
     "quality": 36,
-    "capture_max_height": 720,
+    "capture_max_height": 540,
     "audio_bitrate_k": 96,
     "video_encoder": "auto",
+    "buffer_encoder_profile": "balanced",
     "monitor_index": 1,
     "capture_flip": "none",
     "mic_device": "",
@@ -123,8 +124,9 @@ def migrate():
         _cfg["sys_audio_device"] = "__wasapi_out__"
         changed = True
     try:
-        if int(_cfg.get("segment_seconds") or 30) < 15:
-            _cfg["segment_seconds"] = 30
+        seg = int(_cfg.get("segment_seconds") or 15)
+        if seg < 10:
+            _cfg["segment_seconds"] = 10
             changed = True
     except (TypeError, ValueError):
         pass
@@ -142,6 +144,9 @@ def migrate():
         pass
     if "video_encoder" not in _cfg:
         _cfg["video_encoder"] = "auto"
+        changed = True
+    if "buffer_encoder_profile" not in _cfg:
+        _cfg["buffer_encoder_profile"] = "balanced"
         changed = True
     if "stats_overlay_corner" not in _cfg:
         _cfg["stats_overlay_corner"] = "br"

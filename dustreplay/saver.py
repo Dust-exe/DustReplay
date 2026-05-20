@@ -90,8 +90,8 @@ def _merge_export(ff: str, lp: str, out: str, valid_segs: list) -> Tuple[bool, s
     logger.warning("concat copy failed, re-encoding. stderr tail: %s", err0)
 
     cq = str(config.get("quality"))
-    use_nvenc = encoding.use_nvenc(ff)
-    venc = encoding.video_encode_args(use_nvenc, cq)
+    enc = encoding.resolve_encoder(ff)
+    venc = encoding.video_encode_args(enc, cq)
     has_audio = _segment_has_audio(ff, valid_segs[0])
     try:
         abk = int(config.get("audio_bitrate_k") or 96)
@@ -121,9 +121,9 @@ def _merge_export(ff: str, lp: str, out: str, valid_segs: list) -> Tuple[bool, s
         timeout=900,
         creationflags=_subprocess_flags(),
     )
-    if r.returncode != 0 and use_nvenc:
-        logger.warning("NVENC export failed, trying libx264…")
-        venc2 = encoding.video_encode_args(False, cq)
+    if r.returncode != 0 and enc != encoding.ENC_CPU:
+        logger.warning("GPU export failed (%s), trying libx264…", enc)
+        venc2 = encoding.video_encode_args(encoding.ENC_CPU, cq)
         cmd2 = [
             ff,
             "-y",
@@ -148,7 +148,7 @@ def _merge_export(ff: str, lp: str, out: str, valid_segs: list) -> Tuple[bool, s
         )
     if r.returncode != 0 and has_audio:
         logger.warning("Re-encode with audio failed; retrying video-only (-an).")
-        venc3 = encoding.video_encode_args(False, cq)
+        venc3 = encoding.video_encode_args(encoding.ENC_CPU, cq)
         cmd3 = [
             ff,
             "-y",
@@ -196,7 +196,7 @@ def _worker(recorder, minutes, on_done, on_error, watchdog=None):
                 watchdog.set_paused(True)
             except Exception:
                 pass
-        segs = recorder.get_closed_segments_for_export(minutes)
+        segs = recorder.get_segments_for_export(minutes)
         if watchdog:
             try:
                 watchdog.set_paused(False)

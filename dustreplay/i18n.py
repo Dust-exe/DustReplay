@@ -54,7 +54,15 @@ _MSG = {
         "rec.res_540": "Cap height 540p",
         "enc.auto": "Auto (use GPU if available)",
         "enc.nvenc": "NVIDIA NVENC only",
+        "enc.amf": "AMD AMF only",
         "enc.cpu": "CPU H.264",
+        "enc.profile": "Buffer GPU usage",
+        "enc.profile.balanced": "Balanced (auto NVENC/AMF)",
+        "enc.profile.low_gpu": "Low GPU (CPU encode, 540p cap)",
+        "rec.capture_backend": "Capture method",
+        "rec.capture_backend.hint": "ddagrab: less CPU, more GPU. gdigrab: better for some games, more CPU.",
+        "rec.backend.ddagrab": "Desktop Duplication (ddagrab)",
+        "rec.backend.gdigrab": "GDI capture (gdigrab)",
         "panel.side": "Panel opens from",
         "panel.left": "Left edge",
         "panel.right": "Right edge",
@@ -166,7 +174,15 @@ _MSG = {
         "rec.res_540": "Yükseklik tavanı 540p",
         "enc.auto": "Otomatik (varsa ekran kartı)",
         "enc.nvenc": "Yalnızca NVIDIA NVENC",
+        "enc.amf": "Yalnızca AMD AMF",
         "enc.cpu": "İşlemci H.264",
+        "enc.profile": "Buffer GPU kullanımı",
+        "enc.profile.balanced": "Dengeli (otomatik NVENC/AMF)",
+        "enc.profile.low_gpu": "Düşük GPU (CPU encode, 540p)",
+        "rec.capture_backend": "Yakalama yöntemi",
+        "rec.capture_backend.hint": "ddagrab: daha az CPU, daha çok GPU. gdigrab: bazı oyunlarda daha iyi, daha çok CPU.",
+        "rec.backend.ddagrab": "Desktop Duplication (ddagrab)",
+        "rec.backend.gdigrab": "GDI yakalama (gdigrab)",
         "panel.side": "Panel tarafı",
         "panel.left": "Sol kenar",
         "panel.right": "Sağ kenar",
@@ -249,7 +265,15 @@ def t(key: str, **kwargs) -> str:
 
 
 def encoder_labels():
-    return [t("enc.auto"), t("enc.nvenc"), t("enc.cpu")]
+    return [t("enc.auto"), t("enc.nvenc"), t("enc.amf"), t("enc.cpu")]
+
+
+def buffer_profile_labels():
+    return [t("enc.profile.balanced"), t("enc.profile.low_gpu")]
+
+
+def capture_backend_labels():
+    return [t("rec.backend.ddagrab"), t("rec.backend.gdigrab")]
 
 
 def res_cap_labels():
