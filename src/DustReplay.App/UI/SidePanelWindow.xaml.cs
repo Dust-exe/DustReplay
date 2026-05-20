@@ -16,7 +16,7 @@ public partial class SidePanelWindow : Window
         InitializeComponent();
         _host = host;
         HeaderLogo.Source = BrandingPaths.LoadLogo(56);
-        VersionText.Text = "v3.3.1";
+        VersionText.Text = "v3.3.2";
         GalleryStrip.OpenFullGallery += () => _host.ToggleMainWindow(openSettings: false);
 
         _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };

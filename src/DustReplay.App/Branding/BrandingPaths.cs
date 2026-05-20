@@ -5,8 +5,19 @@ namespace DustReplay.App.Branding;
 
 public static class BrandingPaths
 {
-    public static string LogoPath =>
-        Path.Combine(AppContext.BaseDirectory, "Assets", "logo.png");
+    public static string LogoPath
+    {
+        get
+        {
+            var bundled = Path.Combine(AppContext.BaseDirectory, "Assets", "logo.png");
+            if (File.Exists(bundled)) return bundled;
+            var desktop = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+                "dasasd", "dust logo.png");
+            if (File.Exists(desktop)) return desktop;
+            return bundled;
+        }
+    }
 
     public static BitmapImage? LoadLogo(int decodeWidth = 0)
     {

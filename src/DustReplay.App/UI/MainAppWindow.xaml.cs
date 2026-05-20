@@ -20,7 +20,6 @@ public partial class MainAppWindow : Window
     {
         InitializeComponent();
         _host = host;
-        SidebarLogo.Source = BrandingPaths.LoadLogo(72);
         _settingsPage = new Views.SettingsView(host);
         _settingsPage.Visibility = Visibility.Collapsed;
         var body = (Grid)((Grid)Content).Children[1];
@@ -140,8 +139,11 @@ public partial class MainAppWindow : Window
     {
         PageGallery.Visibility = tag == "gallery" ? Visibility.Visible : Visibility.Collapsed;
         _settingsPage.Visibility = tag == "settings" ? Visibility.Visible : Visibility.Collapsed;
-        NavGallery.Background = tag == "gallery" ? (Brush)FindResource("AccentBrush") : Brushes.Transparent;
-        NavSettings.Background = tag == "settings" ? (Brush)FindResource("AccentBrush") : Brushes.Transparent;
+        var accent = (Brush)FindResource("AccentBrush");
+        var clear = Brushes.Transparent;
+        NavGallery.Background = tag == "gallery" ? accent : clear;
+        NavRecordings.Background = tag == "recordings" ? accent : clear;
+        NavSettings.Background = tag == "settings" ? accent : clear;
     }
 
     private void Save_Click(object sender, RoutedEventArgs e) => _host.SaveReplay();

@@ -26,7 +26,8 @@ def _placeholder_img() -> ctk.CTkImage:
     img = Image.new("RGBA", (_THUMB_W, _THUMB_H), (*_CARD_BG, 255))
     d = ImageDraw.Draw(img)
     cx, cy, r = _THUMB_W // 2, _THUMB_H // 2, 30
-    d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=(255, 255, 255, 210))
+    accent = (139, 108, 240, 230)
+    d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=accent)
     tx = cx - 9
     d.polygon([(tx, cy - 15), (tx, cy + 15), (cx + 19, cy)], fill=(*_CARD_BG, 255))
     return ctk.CTkImage(light_image=img.convert("RGB"), dark_image=img.convert("RGB"),
@@ -40,7 +41,8 @@ def _thumb_with_play(pil: Image.Image) -> ctk.CTkImage:
     blended = Image.blend(pil, bg, alpha=0.5)
     d = ImageDraw.Draw(blended)
     cx, cy, r = _THUMB_W // 2, _THUMB_H // 2, 30
-    d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=(255, 255, 255, 210))
+    accent = (139, 108, 240, 230)
+    d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=accent)
     tx = cx - 9
     d.polygon([(tx, cy - 15), (tx, cy + 15), (cx + 19, cy)], fill=_CARD_BG)
     return ctk.CTkImage(light_image=blended, dark_image=blended, size=(_THUMB_W, _THUMB_H))
@@ -242,52 +244,147 @@ class _GalleryPage(ctk.CTkFrame):
         subprocess.Popen(["explorer", od])
 
 
+def _resolve_logo_path() -> str | None:
+    """User logo + bundled branding/logo.png."""
+    candidates = [
+        branding_paths.logo_png_path(),
+        os.path.join(
+            os.path.expanduser("~"),
+            "Desktop",
+            "dasasd",
+            "dust logo.png",
+        ),
+        r"C:\Users\kaan3\Desktop\dasasd\dust logo.png",
+    ]
+    for p in candidates:
+        if p and os.path.isfile(p):
+            return p
+    return None
+
+
+def _load_logo_ctk(size: int = 22) -> ctk.CTkImage | None:
+    lp = _resolve_logo_path()
+    if not lp:
+        return None
+    try:
+        pil = Image.open(lp).convert("RGBA")
+        pil.thumbnail((size, size), Image.Resampling.LANCZOS)
+        return ctk.CTkImage(light_image=pil, dark_image=pil, size=(size, size))
+    except Exception:
+        return None
+
+
 class MainWindow(ctk.CTkToplevel):
-    """Wide application window — opened from tray icon or panel dock button."""
+    """Wide application window — WhatsApp-style merged title bar + sidebar."""
+
+    _TITLE_H = 40
 
     def __init__(self, app):
         super().__init__()
         self.app = app
         self._pages: dict[str, ctk.CTkFrame] = {}
         self._nb: dict[str, ctk.CTkButton] = {}
+        self._drag_x = 0
+        self._drag_y = 0
+        self._rs_x = self._rs_y = self._rs_w = self._rs_h = 0
 
         self.title(config.APP_DISPLAY)
         self.geometry("980x660")
         self.minsize(800, 520)
         self.configure(fg_color=theme.BG)
         self.protocol("WM_DELETE_WINDOW", self.hide)
+        self.overrideredirect(True)
 
         self._build()
         self.withdraw()
 
+    def _build_title_bar(self, parent):
+        """Full-width top bar merged with window (no separate OS purple strip)."""
+        bar = ctk.CTkFrame(parent, fg_color=theme.BG, corner_radius=0, height=self._TITLE_H)
+        bar.pack(fill="x")
+        bar.pack_propagate(False)
+
+        left = ctk.CTkFrame(bar, fg_color="transparent")
+        left.pack(side="left", fill="y", padx=(12, 0))
+        logo = _load_logo_ctk(24)
+        if logo:
+            ctk.CTkLabel(left, image=logo, text="").pack(side="left", padx=(0, 8), pady=8)
+        ctk.CTkLabel(
+            left,
+            text=config.APP_DISPLAY,
+            font=ctk.CTkFont(size=13, weight="bold"),
+            text_color=theme.TEXT,
+        ).pack(side="left", pady=8)
+
+        right = ctk.CTkFrame(bar, fg_color="transparent")
+        right.pack(side="right", fill="y", padx=(0, 4))
+
+        def _wbtn(txt, cmd, w=40):
+            ctk.CTkButton(
+                right,
+                text=txt,
+                width=w,
+                height=28,
+                fg_color="transparent",
+                hover_color=theme.DOCK_HANDLE,
+                text_color=theme.TEXT_SOFT,
+                font=ctk.CTkFont(size=14),
+                corner_radius=6,
+                command=cmd,
+            ).pack(side="left", padx=1, pady=6)
+
+        _wbtn("\u2014", self._minimize)
+        _wbtn("\u25a1", self._toggle_maximize)
+        _wbtn("\u2715", self.hide, w=44)
+
+        drag = ctk.CTkFrame(bar, fg_color="transparent", cursor="fleur")
+        drag.place(relx=0, rely=0, relwidth=1, relheight=1)
+        drag.lower()
+        left.lift()
+        right.lift()
+        drag.bind("<ButtonPress-1>", self._start_drag)
+        drag.bind("<B1-Motion>", self._on_drag)
+
+        ctk.CTkFrame(parent, height=1, fg_color=theme.SEPARATOR).pack(fill="x")
+
+    def _start_drag(self, event):
+        self._drag_x = event.x
+        self._drag_y = event.y
+
+    def _on_drag(self, event):
+        x = self.winfo_x() + event.x - self._drag_x
+        y = self.winfo_y() + event.y - self._drag_y
+        self.geometry(f"+{x}+{y}")
+
+    def _minimize(self):
+        try:
+            self.iconify()
+        except Exception:
+            self.withdraw()
+
+    def _toggle_maximize(self):
+        try:
+            if self.state() == "zoomed":
+                self.state("normal")
+            else:
+                self.state("zoomed")
+        except Exception:
+            pass
+
     def _build(self):
-        sidebar = ctk.CTkFrame(self, fg_color=theme.PANEL, width=_SIDEBAR_W, corner_radius=0)
+        root = ctk.CTkFrame(self, fg_color=theme.BG, corner_radius=0)
+        root.pack(fill="both", expand=True)
+
+        self._build_title_bar(root)
+
+        body = ctk.CTkFrame(root, fg_color=theme.BG, corner_radius=0)
+        body.pack(fill="both", expand=True)
+
+        sidebar = ctk.CTkFrame(body, fg_color=theme.PANEL, width=_SIDEBAR_W, corner_radius=0)
         sidebar.pack(side="left", fill="y")
         sidebar.pack_propagate(False)
 
-        hdr = ctk.CTkFrame(sidebar, fg_color=theme.HEADER_BG, corner_radius=0, height=62)
-        hdr.pack(fill="x")
-        hdr.pack_propagate(False)
-        self._logo_img = None
-        try:
-            lp = branding_paths.logo_png_path()
-            if os.path.isfile(lp):
-                pil = Image.open(lp).convert("RGBA")
-                pil.thumbnail((34, 34), Image.Resampling.LANCZOS)
-                self._logo_img = ctk.CTkImage(light_image=pil, dark_image=pil, size=(34, 34))
-                ctk.CTkLabel(hdr, image=self._logo_img, text="").pack(
-                    side="left", padx=(10, 6), pady=14
-                )
-        except Exception:
-            pass
-        ctk.CTkLabel(
-            hdr,
-            text=config.APP_DISPLAY,
-            font=ctk.CTkFont(size=14, weight="bold"),
-            text_color=theme.TEXT,
-        ).pack(side="left", pady=14)
-
-        ctk.CTkFrame(sidebar, height=1, fg_color=theme.SEPARATOR).pack(fill="x", pady=(10, 6))
+        ctk.CTkFrame(sidebar, height=1, fg_color=theme.SEPARATOR).pack(fill="x", pady=(8, 6))
 
         for label_key, key in (
             ("nav.gallery", "gallery"),
@@ -348,10 +445,15 @@ class MainWindow(ctk.CTkToplevel):
         except Exception:
             pass
 
-        ctk.CTkFrame(self, width=1, fg_color=theme.SEPARATOR).pack(side="left", fill="y")
+        ctk.CTkFrame(body, width=1, fg_color=theme.SEPARATOR).pack(side="left", fill="y")
 
-        self._content = ctk.CTkFrame(self, fg_color=theme.CBG, corner_radius=0)
+        self._content = ctk.CTkFrame(body, fg_color=theme.CBG, corner_radius=0)
         self._content.pack(side="right", fill="both", expand=True)
+
+        grip = ctk.CTkFrame(self, width=14, height=14, fg_color="transparent", cursor="size_nw_se")
+        grip.place(relx=1.0, rely=1.0, anchor="se")
+        grip.bind("<ButtonPress-1>", self._resize_start)
+        grip.bind("<B1-Motion>", self._resize_drag)
 
         from page_recordings import RecordingsPage
         from page_settings import SettingsPage
@@ -378,6 +480,20 @@ class MainWindow(ctk.CTkToplevel):
                 text_color=theme.TEXT if k == key else theme.NAV_INACTIVE,
             )
 
+    def _resize_start(self, event):
+        self._rs_x = event.x_root
+        self._rs_y = event.y_root
+        self._rs_w = self.winfo_width()
+        self._rs_h = self.winfo_height()
+
+    def _resize_drag(self, event):
+        try:
+            nw = max(800, self._rs_w + event.x_root - self._rs_x)
+            nh = max(520, self._rs_h + event.y_root - self._rs_y)
+            self.geometry(f"{nw}x{nh}")
+        except Exception:
+            pass
+
     def show(self):
         try:
             if not self.winfo_exists():
@@ -385,6 +501,8 @@ class MainWindow(ctk.CTkToplevel):
             if self.state() == "withdrawn":
                 self.deiconify()
             self.lift()
+            self.attributes("-topmost", True)
+            self.after(80, lambda: self.attributes("-topmost", False))
             self.focus_force()
         except Exception:
             pass
