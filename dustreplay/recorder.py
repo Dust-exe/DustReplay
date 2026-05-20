@@ -115,7 +115,7 @@ def _capture_flip_suffix() -> str:
 
 
 def _runtime_capture_params():
-    """Apply game-friendly overrides when a fullscreen game is active."""
+    """In games: keep user FPS/resolution/backend; encode on CPU so GPU stays for the game."""
     import game_detect
 
     backend = (config.get("capture_backend") or "ddagrab").lower().strip()
@@ -137,22 +137,14 @@ def _runtime_capture_params():
         except Exception:
             in_game = False
     if gm == "on" or (gm == "auto" and in_game):
-        backend = "gdigrab"
-        try:
-            fps = min(fps, int(config.get("game_fps_cap") or 20))
-        except (TypeError, ValueError):
-            fps = min(fps, 20)
-        try:
-            gmh = int(config.get("game_max_height") or 480)
-        except (TypeError, ValueError):
-            gmh = 480
-        max_h = min(max_h, gmh) if max_h > 0 else gmh
+        # Do not lower FPS or resolution — clips should match user quality settings.
+        # CPU H.264 avoids NVENC/AMF fighting the game for GPU time (main stutter fix).
         force_cpu = True
-        draw_mouse = 0
         logger.info(
-            "Game-friendly capture: gdigrab fps=%s max_h=%s cpu_encode (game=%s)",
+            "Game mode: cpu_encode backend=%s fps=%s max_h=%s (in_game=%s)",
+            backend,
             fps,
-            max_h,
+            max_h or "native",
             in_game,
         )
     return backend, fps, max_h, force_cpu, draw_mouse

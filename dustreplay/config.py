@@ -17,8 +17,6 @@ _DEFAULTS = {
     "segment_seconds": 10,
     "capture_backend": "ddagrab",
     "game_mode": "auto",
-    "game_fps_cap": 20,
-    "game_max_height": 480,
     "fps": 20,
     "quality": 36,
     "capture_max_height": 540,
@@ -153,12 +151,6 @@ def migrate():
         changed = True
     if "game_mode" not in _cfg:
         _cfg["game_mode"] = "auto"
-        changed = True
-    if "game_fps_cap" not in _cfg:
-        _cfg["game_fps_cap"] = 20
-        changed = True
-    if "game_max_height" not in _cfg:
-        _cfg["game_max_height"] = 480
         changed = True
     if "stats_overlay_corner" not in _cfg:
         _cfg["stats_overlay_corner"] = "br"
