@@ -63,6 +63,11 @@ _MSG = {
         "rec.capture_backend.hint": "ddagrab: less CPU, more GPU. gdigrab: better for some games, more CPU.",
         "rec.backend.ddagrab": "Desktop Duplication (ddagrab)",
         "rec.backend.gdigrab": "GDI capture (gdigrab)",
+        "rec.game_mode": "Game mode (CS, etc.)",
+        "rec.game_mode.hint": "Auto: gdigrab + CPU encode when a fullscreen game is focused — less stutter.",
+        "rec.game_mode.off": "Off",
+        "rec.game_mode.auto": "Auto (detect game)",
+        "rec.game_mode.on": "Always game-friendly",
         "panel.side": "Panel opens from",
         "panel.left": "Left edge",
         "panel.right": "Right edge",
@@ -183,6 +188,11 @@ _MSG = {
         "rec.capture_backend.hint": "ddagrab: daha az CPU, daha çok GPU. gdigrab: bazı oyunlarda daha iyi, daha çok CPU.",
         "rec.backend.ddagrab": "Desktop Duplication (ddagrab)",
         "rec.backend.gdigrab": "GDI yakalama (gdigrab)",
+        "rec.game_mode": "Oyun modu (CS vb.)",
+        "rec.game_mode.hint": "Otomatik: tam ekran oyunda gdigrab + CPU encode — daha az kasma.",
+        "rec.game_mode.off": "Kapalı",
+        "rec.game_mode.auto": "Otomatik (oyun algıla)",
+        "rec.game_mode.on": "Her zaman oyun dostu",
         "panel.side": "Panel tarafı",
         "panel.left": "Sol kenar",
         "panel.right": "Sağ kenar",
@@ -274,6 +284,10 @@ def buffer_profile_labels():
 
 def capture_backend_labels():
     return [t("rec.backend.ddagrab"), t("rec.backend.gdigrab")]
+
+
+def game_mode_labels():
+    return [t("rec.game_mode.off"), t("rec.game_mode.auto"), t("rec.game_mode.on")]
 
 
 def res_cap_labels():

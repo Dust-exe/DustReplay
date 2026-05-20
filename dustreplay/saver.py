@@ -196,12 +196,14 @@ def _worker(recorder, minutes, on_done, on_error, watchdog=None):
                 watchdog.set_paused(True)
             except Exception:
                 pass
-        segs = recorder.get_segments_for_export(minutes)
-        if watchdog:
-            try:
-                watchdog.set_paused(False)
-            except Exception:
-                pass
+        try:
+            segs = recorder.get_segments_for_export(minutes)
+        finally:
+            if watchdog:
+                try:
+                    watchdog.set_paused(False)
+                except Exception:
+                    pass
         if not segs:
             seg_count = len(glob.glob(os.path.join(config.TEMP_DIR, "seg_*.mp4")))
             if seg_count == 0:

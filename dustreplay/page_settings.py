@@ -19,6 +19,7 @@ _NONE_SYS = "(No system audio)"
 _ENC_VALUES = ["auto", "nvenc", "amf", "cpu"]
 _PROFILE_VALUES = ["balanced", "low_gpu"]
 _BACKEND_VALUES = ["ddagrab", "gdigrab"]
+_GAME_MODE_VALUES = ["off", "auto", "on"]
 _RES_CAP_VALUES = (0, 1080, 720, 540)
 _FLIP_VALUES = ("none", "vertical", "horizontal", "rotate180")
 
@@ -105,6 +106,7 @@ class SettingsPage(ctk.CTkFrame):
         self._encoder_dd(s)
         self._buffer_profile_dd(s)
         self._capture_backend_dd(s)
+        self._game_mode_dd(s)
         self._sld(s, "buffer_minutes", "rec.buffer", 5, 60, "rec.buffer.hint")
         self._sld(s, "fps", "rec.fps", 10, 60, "rec.fps.hint")
         self._sld(s, "quality", "rec.quality", 18, 40, "rec.quality.hint")
@@ -365,6 +367,44 @@ class SettingsPage(ctk.CTkFrame):
         ctk.CTkOptionMenu(
             r,
             variable=self._backend_var,
+            values=labels,
+            fg_color=theme.PANEL,
+            button_color=_P,
+            button_hover_color=_PH,
+            dropdown_fg_color=theme.ACCENT_DEEP,
+            width=200,
+        ).pack(side="right", padx=12, pady=8)
+
+    def _game_mode_dd(self, p):
+        labels = i18n.game_mode_labels()
+        cur = (config.get("game_mode") or "auto").lower()
+        try:
+            ix = _GAME_MODE_VALUES.index(cur)
+        except ValueError:
+            ix = 1
+        r = ctk.CTkFrame(p, fg_color=_PD, corner_radius=8)
+        r.pack(fill="x", padx=8, pady=4)
+        tf = ctk.CTkFrame(r, fg_color="transparent")
+        tf.pack(side="left", fill="both", expand=True, padx=(12, 0), pady=8)
+        ctk.CTkLabel(
+            tf,
+            text=i18n.t("rec.game_mode"),
+            anchor="w",
+            text_color=theme.TEXT_SOFT,
+            font=ctk.CTkFont(size=12),
+        ).pack(fill="x")
+        ctk.CTkLabel(
+            tf,
+            text=i18n.t("rec.game_mode.hint"),
+            anchor="w",
+            text_color=theme.TEXT_DIM,
+            font=ctk.CTkFont(size=10),
+            wraplength=280,
+        ).pack(fill="x")
+        self._game_mode_var = ctk.StringVar(value=labels[ix])
+        ctk.CTkOptionMenu(
+            r,
+            variable=self._game_mode_var,
             values=labels,
             fg_color=theme.PANEL,
             button_color=_P,
@@ -806,6 +846,13 @@ class SettingsPage(ctk.CTkFrame):
             config.set("capture_backend", _BACKEND_VALUES[bi])
         except (ValueError, AttributeError):
             config.set("capture_backend", "ddagrab")
+
+        try:
+            glabels = i18n.game_mode_labels()
+            gi = glabels.index(self._game_mode_var.get())
+            config.set("game_mode", _GAME_MODE_VALUES[gi])
+        except (ValueError, AttributeError):
+            config.set("game_mode", "auto")
 
         from audio_devices import label_to_config
 

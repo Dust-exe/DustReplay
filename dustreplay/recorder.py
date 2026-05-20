@@ -74,12 +74,16 @@ def _find_dshow_sys_audio(ff, exclude_mic=""):
     return None
 
 
-def _capture_scale_filter() -> str:
+def _capture_scale_filter(max_h_override: int | None = None) -> str:
     """Even dimensions for yuv420p; max height caps pixels (less RAM/CPU for ffmpeg)."""
-    try:
-        max_h = int(config.get("capture_max_height") or 0)
-    except (TypeError, ValueError):
-        max_h = 0
+    if max_h_override is not None:
+        max_h = max_h_override
+    else:
+        try:
+            max_h = int(config.get("capture_max_height") or 0)
+        except (TypeError, ValueError):
+            max_h = 0
+        _, _, max_h, _, _ = _runtime_capture_params()
     if (config.get("buffer_encoder_profile") or "balanced").lower() == "low_gpu":
         max_h = 540 if max_h <= 0 else min(max_h, 540)
     if max_h <= 0:
@@ -110,6 +114,55 @@ def _capture_flip_suffix() -> str:
     return ""
 
 
+def _runtime_capture_params():
+    """Apply game-friendly overrides when a fullscreen game is active."""
+    import game_detect
+
+    backend = (config.get("capture_backend") or "ddagrab").lower().strip()
+    try:
+        fps = int(config.get("fps") or 20)
+    except (TypeError, ValueError):
+        fps = 20
+    try:
+        max_h = int(config.get("capture_max_height") or 0)
+    except (TypeError, ValueError):
+        max_h = 0
+    force_cpu = False
+    draw_mouse = 1
+    gm = (config.get("game_mode") or "auto").lower().strip()
+    in_game = False
+    if gm in ("auto", "on"):
+        try:
+            in_game = game_detect.is_fullscreen_game_active()
+        except Exception:
+            in_game = False
+    if gm == "on" or (gm == "auto" and in_game):
+        backend = "gdigrab"
+        try:
+            fps = min(fps, int(config.get("game_fps_cap") or 20))
+        except (TypeError, ValueError):
+            fps = min(fps, 20)
+        try:
+            gmh = int(config.get("game_max_height") or 480)
+        except (TypeError, ValueError):
+            gmh = 480
+        max_h = min(max_h, gmh) if max_h > 0 else gmh
+        force_cpu = True
+        draw_mouse = 0
+        logger.info(
+            "Game-friendly capture: gdigrab fps=%s max_h=%s cpu_encode (game=%s)",
+            fps,
+            max_h,
+            in_game,
+        )
+    return backend, fps, max_h, force_cpu, draw_mouse
+
+
+def _capture_profile_signature() -> tuple:
+    backend, fps, max_h, force_cpu, draw_mouse = _runtime_capture_params()
+    return (backend, fps, max_h, force_cpu, draw_mouse)
+
+
 def _audio_br() -> str:
     try:
         k = int(config.get("audio_bitrate_k") or 96)
@@ -122,34 +175,36 @@ def _audio_br() -> str:
 def _build_cmd(ff, single_output_path=None):
     """Rolling buffer (segment mux) or one continuous MP4 when single_output_path is set."""
     pat = os.path.join(config.TEMP_DIR, "seg_%Y%m%d_%H%M%S.mp4")
-    fps = str(config.get("fps"))
+    backend, fps_i, max_h_i, force_cpu, draw_mouse = _runtime_capture_params()
+    fps = str(fps_i)
     enc = encoding.resolve_buffer_encoder(ff)
+    if force_cpu:
+        enc = encoding.ENC_CPU
     cq = str(config.get("quality"))
     venc = encoding.video_encode_args(enc, cq)
 
     mon_idx = int(config.get("monitor_index") or 1)
     dda_idx = max(0, mon_idx - 1)
-    try:
-        _mh = int(config.get("capture_max_height") or 0)
-    except (TypeError, ValueError):
-        _mh = 0
+    _mh = max_h_i
     _flip = (config.get("capture_flip") or "none").lower().strip()
     logger.info(
         "Capture: backend=%s output_idx=%s (monitor_index=%s) encoder=%s max_h=%s flip=%s",
-        (config.get("capture_backend") or "ddagrab"),
+        backend,
         dda_idx,
         mon_idx,
         enc,
         _mh or "native",
         _flip or "none",
     )
-    backend = (config.get("capture_backend") or "ddagrab").lower().strip()
     if backend == "gdigrab":
-        dda_src = f"gdigrab=framerate={fps}:draw_mouse=1:desktop=1,format=bgra"
-        logger.info("Capture backend: gdigrab (game-friendly)")
+        dda_src = f"gdigrab=framerate={fps}:draw_mouse={draw_mouse}:desktop=1,format=bgra"
+        logger.info("Capture backend: gdigrab")
     else:
         # Pass fps to ddagrab — capture at target rate, not full monitor refresh.
-        dda_src = f"ddagrab=output_idx={dda_idx}:draw_mouse=1:framerate={fps},hwdownload,format=bgra"
+        dda_src = (
+            f"ddagrab=output_idx={dda_idx}:draw_mouse={draw_mouse}:"
+            f"framerate={fps},hwdownload,format=bgra"
+        )
 
     from audio_devices import WASAPI_IN, WASAPI_OUT
 
@@ -238,7 +293,7 @@ def _build_cmd(ff, single_output_path=None):
         cmd += ai
 
     n = len(audio_in)
-    _scale = _capture_scale_filter()
+    _scale = _capture_scale_filter(max_h_i)
     _flipx = _capture_flip_suffix()
     if backend == "gdigrab":
         vconv = f"{dda_src},fps={fps},{_scale}{_flipx},format=yuv420p[vout]"
@@ -307,6 +362,7 @@ class Recorder:
         self.manual_proc = None
         self.running = False
         self._lock = threading.Lock()
+        self._capture_sig: tuple | None = None
         os.makedirs(config.TEMP_DIR, exist_ok=True)
 
     def start(self):
@@ -314,8 +370,10 @@ class Recorder:
             if self.running:
                 return
             self._launch()
+            self._capture_sig = _capture_profile_signature()
             self.running = True
             threading.Thread(target=self._cloop, daemon=True).start()
+            threading.Thread(target=self._game_profile_loop, daemon=True).start()
             logger.info("Recording started.")
 
     def stop(self):
@@ -330,6 +388,7 @@ class Recorder:
         with self._lock:
             self._term()
             self._launch()
+            self._capture_sig = _capture_profile_signature()
             logger.info("Recording restarted.")
 
     def buffer_alive(self):
@@ -428,6 +487,73 @@ class Recorder:
         except Exception:
             pass
         logger.info("ffmpeg PID=%s", self.process.pid)
+
+    def _game_profile_loop(self):
+        while self.running:
+            try:
+                self._maybe_restart_for_profile()
+            except Exception as e:
+                logger.debug("game profile loop: %s", e)
+            time.sleep(2.5)
+
+    def _maybe_restart_for_profile(self):
+        sig = _capture_profile_signature()
+        if sig == self._capture_sig:
+            return
+        with self._lock:
+            if not self.running:
+                return
+            logger.info("Capture profile changed — restarting ffmpeg")
+            self._term()
+            time.sleep(0.25)
+            self._launch()
+            self._capture_sig = sig
+
+    def _wait_last_segment_stable(self, max_wait: float = 2.5) -> None:
+        time.sleep(0.45)
+        segs = sorted(
+            glob.glob(os.path.join(config.TEMP_DIR, "seg_*.mp4")),
+            key=os.path.getmtime,
+        )
+        if not segs:
+            return
+        last = segs[-1]
+        prev = -1
+        stable = 0
+        deadline = time.time() + max_wait
+        while time.time() < deadline:
+            try:
+                sz = os.path.getsize(last)
+            except OSError:
+                break
+            if sz == prev and sz >= 50_000:
+                stable += 1
+                if stable >= 2:
+                    return
+            else:
+                stable = 0
+            prev = sz
+            time.sleep(0.12)
+
+    def _finalize_open_segment(self, wait_timeout: float = 12) -> None:
+        """Send 'q' to ffmpeg so the open segment gets a valid MP4 trailer (moov)."""
+        if self.process and self.process.poll() is None:
+            try:
+                self.process.stdin.write(b"q\n")
+                self.process.stdin.flush()
+                self.process.wait(timeout=wait_timeout)
+            except Exception:
+                try:
+                    self.process.kill()
+                    self.process.wait(timeout=4)
+                except Exception:
+                    pass
+        self.process = None
+        try:
+            os.remove(_PID_FILE)
+        except OSError:
+            pass
+        self._wait_last_segment_stable()
 
     def _term(self):
         if self.process is None:
@@ -551,61 +677,43 @@ class Recorder:
         logger.info("get_closed_segments_for_export: %s segments", len(result))
         return result
 
-    def get_segments_for_export(self, minutes=None):
-        """Closed segments plus tail of the current open segment when possible."""
-        closed = self.get_closed_segments_for_export(minutes)
-        all_segs = sorted(
-            glob.glob(os.path.join(config.TEMP_DIR, "seg_*.mp4")),
-            key=os.path.getmtime,
-        )
-        if not all_segs:
-            return closed
-        last = all_segs[-1]
-        if last in closed:
-            return closed
-        tail = self.try_copy_tail_segment()
-        if tail:
-            return closed + [tail]
-        logger.warning("Tail copy failed; rolling buffer segment for export")
-        rollover = self.cut_and_get_segments(minutes)
-        return rollover if rollover else closed
-
-    def cut_and_get_segments(self, minutes=None):
+    def flush_and_get_segments_for_export(self, minutes=None):
+        """Finalize the open segment (ffmpeg quit) so export includes everything up to save."""
         if self.manual_proc is not None and self.manual_proc.poll() is None:
-            logger.warning("cut_and_get_segments: skipped (manual recording active)")
+            logger.warning("flush_and_get_segments_for_export: skipped (manual recording active)")
             return []
         if minutes is None:
             minutes = config.get("buffer_minutes")
         cutoff = time.time() - (minutes * 60)
+        resume = self.running
         with self._lock:
-            if self.process and self.process.poll() is None:
-                try:
-                    self.process.stdin.write(b"q\n")
-                    self.process.stdin.flush()
-                    self.process.wait(timeout=6)
-                except Exception:
-                    try:
-                        self.process.kill()
-                    except Exception:
-                        pass
-            self.process = None
-            try:
-                os.remove(_PID_FILE)
-            except Exception:
-                pass
-            time.sleep(0.35)
+            if resume:
+                self._finalize_open_segment()
             segs = sorted(
                 glob.glob(os.path.join(config.TEMP_DIR, "seg_*.mp4")),
                 key=os.path.getmtime,
             )
-            result = [s for s in segs if os.path.getmtime(s) >= cutoff]
-            logger.info("cut_and_get_segments: %s segments", len(result))
-            try:
-                self._launch()
-                logger.info("Recording restarted after cut.")
-            except Exception as e:
-                logger.error("Failed to restart after cut: %s", e)
+            result = [
+                s
+                for s in segs
+                if os.path.getmtime(s) >= cutoff and os.path.getsize(s) >= 2048
+            ]
+            logger.info("flush_and_get_segments_for_export: %s segments", len(result))
+            if resume:
+                try:
+                    self._launch()
+                    self._capture_sig = _capture_profile_signature()
+                    logger.info("Recording restarted after save flush.")
+                except Exception as e:
+                    logger.error("Failed to restart after save flush: %s", e)
         return result
+
+    def get_segments_for_export(self, minutes=None):
+        """Always flush the live segment so the last 10–30s are included in the clip."""
+        return self.flush_and_get_segments_for_export(minutes)
+
+    def cut_and_get_segments(self, minutes=None):
+        return self.flush_and_get_segments_for_export(minutes)
 
     def buffer_seconds_filled(self):
         segs = sorted(

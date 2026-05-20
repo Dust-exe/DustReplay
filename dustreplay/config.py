@@ -14,8 +14,11 @@ _CFG_FILE = os.path.join(APPDATA_DIR, "settings.json")
 
 _DEFAULTS = {
     "buffer_minutes": 10,
-    "segment_seconds": 15,
+    "segment_seconds": 10,
     "capture_backend": "ddagrab",
+    "game_mode": "auto",
+    "game_fps_cap": 20,
+    "game_max_height": 480,
     "fps": 20,
     "quality": 36,
     "capture_max_height": 540,
@@ -147,6 +150,15 @@ def migrate():
         changed = True
     if "buffer_encoder_profile" not in _cfg:
         _cfg["buffer_encoder_profile"] = "balanced"
+        changed = True
+    if "game_mode" not in _cfg:
+        _cfg["game_mode"] = "auto"
+        changed = True
+    if "game_fps_cap" not in _cfg:
+        _cfg["game_fps_cap"] = 20
+        changed = True
+    if "game_max_height" not in _cfg:
+        _cfg["game_max_height"] = 480
         changed = True
     if "stats_overlay_corner" not in _cfg:
         _cfg["stats_overlay_corner"] = "br"
