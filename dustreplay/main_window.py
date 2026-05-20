@@ -337,23 +337,32 @@ class MainWindow(ctk.CTkToplevel):
         _wbtn("\u25a1", self._toggle_maximize)
         _wbtn("\u2715", self.hide, w=44)
 
-        drag = ctk.CTkFrame(bar, fg_color="transparent", cursor="fleur")
-        drag.place(relx=0, rely=0, relwidth=1, relheight=1)
-        drag.lower()
-        left.lift()
-        right.lift()
-        drag.bind("<ButtonPress-1>", self._start_drag)
-        drag.bind("<B1-Motion>", self._on_drag)
+        self._bind_drag(bar)
+        self._bind_drag(left)
 
         ctk.CTkFrame(parent, height=1, fg_color=theme.SEPARATOR).pack(fill="x")
 
+    def _bind_drag(self, widget):
+        widget.configure(cursor="fleur")
+        widget.bind("<ButtonPress-1>", self._start_drag, add="+")
+        widget.bind("<B1-Motion>", self._on_drag, add="+")
+
     def _start_drag(self, event):
-        self._drag_x = event.x
-        self._drag_y = event.y
+        w = event.widget
+        while w is not None:
+            if w.winfo_class() == "CTkButton":
+                return
+            w = getattr(w, "master", None)
+        self._drag_x = event.x_root
+        self._drag_y = event.y_root
+        self._win_x = self.winfo_x()
+        self._win_y = self.winfo_y()
 
     def _on_drag(self, event):
-        x = self.winfo_x() + event.x - self._drag_x
-        y = self.winfo_y() + event.y - self._drag_y
+        if not hasattr(self, "_win_x"):
+            return
+        x = self._win_x + event.x_root - self._drag_x
+        y = self._win_y + event.y_root - self._drag_y
         self.geometry(f"+{x}+{y}")
 
     def _minimize(self):

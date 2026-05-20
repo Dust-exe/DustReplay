@@ -19,13 +19,30 @@ public partial class TitleBar : UserControl
         };
     }
 
-    private void DragArea_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e) =>
+        TryDragMove(e);
+
+    private void DragArea_MouseLeftButtonDown(object sender, MouseButtonEventArgs e) =>
+        TryDragMove(e);
+
+    private void TryDragMove(MouseButtonEventArgs e)
     {
-        if (e.ClickCount == 2 && _window != null)
+        if (_window == null) return;
+        if (e.OriginalSource is Button) return;
+        if (e.ClickCount == 2)
+        {
             _window.WindowState = _window.WindowState == WindowState.Maximized
                 ? WindowState.Normal : WindowState.Maximized;
-        else
-            _window?.DragMove();
+            return;
+        }
+        try
+        {
+            _window.DragMove();
+        }
+        catch
+        {
+            /* ignore if click released before move */
+        }
     }
 
     private void Minimize_Click(object sender, RoutedEventArgs e) =>

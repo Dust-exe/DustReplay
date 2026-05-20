@@ -30,6 +30,26 @@ _SBG = theme.SBG
 _PANEL_W = 340
 
 
+def _hide_from_taskbar(win):
+    """Side panel is a tray overlay — do not add a second taskbar button on Windows."""
+    try:
+        import ctypes
+
+        win.update_idletasks()
+        hwnd = ctypes.windll.user32.GetParent(win.winfo_id())
+        if not hwnd:
+            hwnd = win.winfo_id()
+        gwl_exstyle = -20
+        ws_toolwindow = 0x00000080
+        ws_appwindow = 0x00040000
+        style = ctypes.windll.user32.GetWindowLongW(hwnd, gwl_exstyle)
+        style = (style | ws_toolwindow) & ~ws_appwindow
+        ctypes.windll.user32.SetWindowLongW(hwnd, gwl_exstyle, style)
+        ctypes.windll.user32.SetWindowPos(hwnd, 0, 0, 0, 0, 0, 0x0027)
+    except Exception as e:
+        logger.debug("hide_from_taskbar: %s", e)
+
+
 def _ti(rec):
     sz = 64
     bg = (20, 16, 24, 255)
@@ -131,6 +151,18 @@ class AppWindow(ctk.CTk):
         p.withdraw()
         p.overrideredirect(True)
         p.attributes("-topmost", True)
+        try:
+            p.transient(self)
+        except Exception:
+            pass
+        try:
+            p.wm_attributes("-toolwindow", True)
+        except Exception:
+            pass
+        try:
+            p.wm_attributes("-skip_taskbar", True)
+        except Exception:
+            pass
         p.configure(fg_color=_BG)
         _init_x = 0 if config.get("panel_side") == "left" else sw - _PANEL_W
         p.geometry(f"{_PANEL_W}x{sh}+{_init_x}+0")
@@ -339,6 +371,8 @@ class AppWindow(ctk.CTk):
         self._panel.deiconify()
         self._panel.lift()
         self._panel.attributes("-topmost", True)
+        _hide_from_taskbar(self._panel)
+        _hide_from_taskbar(bd)
         try:
             self._panel.attributes("-alpha", 0.0)
         except Exception:

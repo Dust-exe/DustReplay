@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:DustReplay.App.Controls"
         Title="DustReplay" Width="320" WindowStyle="None" AllowsTransparency="True"
-        Background="#1A1A1A" ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True">
+        Background="#1A1A1A" ResizeMode="NoResize" ShowInTaskbar="False" ShowActivated="False" Topmost="True">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
