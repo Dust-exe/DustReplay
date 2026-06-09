@@ -7,8 +7,8 @@ public static class FfmpegCommandBuilder
     {
         var pat = Path.Combine(AppPaths.TempDir, "seg_%Y%m%d_%H%M%S.mp4");
         var fps = s.Fps.ToString();
-        var nvenc = EncodingHelper.UseNvenc(ffmpeg);
-        var venc = string.Join(" ", EncodingHelper.VideoEncodeArgs(nvenc, s.Quality));
+        var encoder = EncodingHelper.ResolveEncoder(ffmpeg);
+        var venc = string.Join(" ", EncodingHelper.VideoEncodeArgs(encoder, s.Quality));
         var ddaIdx = Math.Max(0, s.MonitorIndex - 1);
         var scale = CaptureScaleFilter(s);
         var flip = CaptureFlipSuffix(s.CaptureFlip);
@@ -34,12 +34,12 @@ public static class FfmpegCommandBuilder
         args.AddRange(["-filter_complex", fc]);
         if (n >= 1)
         {
-            args.AddRange(["-map", "[vout]", "-map", "[aout]", .. EncodingHelper.VideoEncodeArgs(nvenc, s.Quality),
+            args.AddRange(["-map", "[vout]", "-map", "[aout]", .. EncodingHelper.VideoEncodeArgs(encoder, s.Quality),
                 "-c:a", "aac", "-b:a", abr]);
         }
         else
         {
-            args.AddRange(["-map", "[vout]", .. EncodingHelper.VideoEncodeArgs(nvenc, s.Quality)]);
+            args.AddRange(["-map", "[vout]", .. EncodingHelper.VideoEncodeArgs(encoder, s.Quality)]);
         }
 
         // No -reset_timestamps: avoids black/gap frames at segment boundaries when concatenating.
