@@ -69,8 +69,8 @@ public sealed class ReplaySaver
 
     private static bool MergeExport(string ff, string listPath, string outPath, AppSettings s)
     {
-        var nvenc = EncodingHelper.UseNvenc(ff);
-        var venc = EncodingHelper.VideoEncodeArgs(nvenc, s.Quality);
+        var encoder = EncodingHelper.ResolveEncoder(ff);
+        var venc = EncodingHelper.VideoEncodeArgs(encoder, s.Quality);
         var abr = $"{Math.Clamp(s.AudioBitrateK, 64, 320)}k";
 
         bool Run(string args)
