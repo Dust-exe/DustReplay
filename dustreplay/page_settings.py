@@ -108,8 +108,8 @@ class SettingsPage(ctk.CTkFrame):
         self._capture_backend_dd(s)
         self._game_mode_dd(s)
         self._sld(s, "buffer_minutes", "rec.buffer", 5, 60, "rec.buffer.hint")
-        self._sld(s, "fps", "rec.fps", 10, 60, "rec.fps.hint")
-        self._sld(s, "quality", "rec.quality", 18, 40, "rec.quality.hint")
+        self._fps_seg(s)
+        self._quality_dd(s)
         self._res_cap_dd(s)
 
         self._sec(s, "sec.audio")
@@ -518,6 +518,67 @@ class SettingsPage(ctk.CTkFrame):
             justify="left",
         ).pack(side="left")
 
+    def _fps_seg(self, p):
+        cur = str(config.get("fps") or "60")
+        if cur not in ["30", "60"]:
+            cur = "60"
+        self._v["fps"] = (ctk.StringVar(value=cur), int)
+        r = ctk.CTkFrame(p, fg_color=_PD, corner_radius=8)
+        r.pack(fill="x", padx=8, pady=4)
+        ctk.CTkLabel(
+            r,
+            text=i18n.t("rec.fps"),
+            anchor="w",
+            text_color=theme.TEXT_SOFT,
+            font=ctk.CTkFont(size=12),
+        ).pack(side="left", padx=(12, 0), pady=12)
+        ctk.CTkSegmentedButton(
+            r,
+            variable=self._v["fps"][0],
+            values=["30", "60"],
+            selected_color=_P,
+            selected_hover_color=_PH
+        ).pack(side="right", padx=12, pady=8)
+
+    def _quality_dd(self, p):
+        # Maps preset label -> CRF
+        self._q_labels = [
+            i18n.t("quality_low"),
+            i18n.t("quality_medium"),
+            i18n.t("quality_high"),
+            i18n.t("quality_ultra")
+        ]
+        self._q_vals = [28, 23, 18, 15]
+        
+        cur_crf = int(config.get("quality") or 18)
+        cur_label = self._q_labels[2] # Default to High
+        if cur_crf <= 16: cur_label = self._q_labels[3]
+        elif cur_crf <= 20: cur_label = self._q_labels[2]
+        elif cur_crf <= 25: cur_label = self._q_labels[1]
+        else: cur_label = self._q_labels[0]
+            
+        r = ctk.CTkFrame(p, fg_color=_PD, corner_radius=8)
+        r.pack(fill="x", padx=8, pady=4)
+        ctk.CTkLabel(
+            r,
+            text=i18n.t("quality_preset"),
+            anchor="w",
+            text_color=theme.TEXT_SOFT,
+            font=ctk.CTkFont(size=12),
+        ).pack(side="left", padx=(12, 0), pady=12)
+        
+        self._quality_var = ctk.StringVar(value=cur_label)
+        ctk.CTkOptionMenu(
+            r,
+            variable=self._quality_var,
+            values=self._q_labels,
+            fg_color=theme.PANEL,
+            button_color=_P,
+            button_hover_color=_PH,
+            dropdown_fg_color=theme.ACCENT_DEEP,
+            width=200,
+        ).pack(side="right", padx=12, pady=8)
+
     def _flip_dd(self, p):
         labels = i18n.flip_labels()
         cur = (config.get("capture_flip") or "none").lower().strip()
@@ -899,6 +960,13 @@ class SettingsPage(ctk.CTkFrame):
             ):
                 mi = self._stats_mode_labels.index(self._stats_mode_var.get())
                 config.set("stats_overlay_mode", self._stats_mode_codes[mi])
+        except Exception:
+            pass
+
+        try:
+            if getattr(self, "_q_labels", None) and getattr(self, "_quality_var", None):
+                qi = self._q_labels.index(self._quality_var.get())
+                config.set("quality", self._q_vals[qi])
         except Exception:
             pass
 

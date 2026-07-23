@@ -156,6 +156,17 @@ _MSG = {
         "updater_btn_later": "Later",
         "updater_up_to_date": "DustReplay is up to date!",
         "updater_checking": "Checking for updates...",
+        "clip_selected_range": "Selected",
+        "clip_seconds": "seconds",
+        "quality_preset": "Quality Preset",
+        "quality_low": "Low (Compact)",
+        "quality_medium": "Medium (Balanced)",
+        "quality_high": "High (Recommended)",
+        "quality_ultra": "Ultra (Best)",
+        "rec.res_native": "Native Monitor",
+        "rec.res_1440": "1440p",
+        "rec.res_1080": "1080p",
+        "rec.res_720": "720p",
     },
     "tr": {
         "nav.home": "\U0001f3e0 Ana Sayfa",
@@ -310,6 +321,17 @@ _MSG = {
         "updater_btn_later": "Daha Sonra",
         "updater_up_to_date": "DustReplay güncel!",
         "updater_checking": "Güncellemeler kontrol ediliyor...",
+        "clip_selected_range": "Seçilen",
+        "clip_seconds": "saniye",
+        "quality_preset": "Kalite Ayarı",
+        "quality_low": "Düşük (Kompakt)",
+        "quality_medium": "Orta (Dengeli)",
+        "quality_high": "Yüksek (Önerilen)",
+        "quality_ultra": "Ultra (En İyi)",
+        "rec.res_native": "Native Monitor",
+        "rec.res_1440": "1440p",
+        "rec.res_1080": "1080p",
+        "rec.res_720": "720p",
     },
 }
 
@@ -351,9 +373,9 @@ def game_mode_labels():
 def res_cap_labels():
     return [
         t("rec.res_native"),
+        t("rec.res_1440"),
         t("rec.res_1080"),
         t("rec.res_720"),
-        t("rec.res_540"),
     ]
 
 

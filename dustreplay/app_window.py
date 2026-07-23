@@ -321,24 +321,33 @@ class AppWindow(ctk.CTk):
         is_left = config.get("panel_side") == "left"
         offscreen_x = -_PANEL_W if is_left else sw
         
-        steps = 12
+        steps = 8
         step_ms = 12
         
         def animate_out(step):
             if step > steps:
                 self._destroy_panel_backdrop()
+                try:
+                    self._panel.attributes("-alpha", 0.0)
+                except Exception:
+                    pass
                 self._panel.withdraw()
                 self._panel_visible = False
                 self._panel_animating = False
                 return
                 
             progress = step / steps
-            current_x = int(target_x + (offscreen_x - target_x) * progress)
-            self._panel.geometry(f"{_PANEL_W}x{sh}+{current_x}+0")
+            eased = progress * progress  # ease-in for exit
+            current_x = int(target_x + (offscreen_x - target_x) * eased)
+            try:
+                self._panel.geometry(f"{_PANEL_W}x{sh}+{current_x}+0")
+                self._panel.attributes("-alpha", max(0.0, 1.0 - eased))
+            except Exception:
+                pass
             
             if self._panel_backdrop:
                 try:
-                    self._panel_backdrop.attributes("-alpha", 0.14 * (1 - progress))
+                    self._panel_backdrop.attributes("-alpha", 0.14 * (1 - eased))
                 except Exception:
                     pass
                     
@@ -385,13 +394,14 @@ class AppWindow(ctk.CTk):
 
         self._panel.geometry(f"{_PANEL_W}x{sh}+{offscreen_x}+0")
         self._panel.update_idletasks()
+        # Prevent flash: set alpha=0 BEFORE showing
+        try:
+            self._panel.attributes("-alpha", 0.0)
+        except Exception:
+            pass
         self._panel.deiconify()
         _hide_from_taskbar(self._panel)
         _hide_from_taskbar(bd)
-        try:
-            self._panel.attributes("-alpha", 1.0)
-        except Exception:
-            pass
         self._panel.attributes("-topmost", True)
         self._panel.lift()
         try:
@@ -401,12 +411,16 @@ class AppWindow(ctk.CTk):
         self._panel.focus_force()
         self._panel_visible = True
 
-        steps = 12
+        steps = 8
         step_ms = 12
         
         def animate_in(step):
             if step > steps:
                 self._panel.geometry(f"{_PANEL_W}x{sh}+{target_x}+0")
+                try:
+                    self._panel.attributes("-alpha", 1.0)
+                except Exception:
+                    pass
                 if self._panel_backdrop:
                     try:
                         self._panel_backdrop.attributes("-alpha", 0.14)
@@ -415,9 +429,13 @@ class AppWindow(ctk.CTk):
                 self._panel_animating = False
                 return
                 
-            progress = 1 - (1 - step/steps)**4
+            progress = 1 - (1 - step/steps)**3  # cubic ease-out
             current_x = int(offscreen_x + (target_x - offscreen_x) * progress)
-            self._panel.geometry(f"{_PANEL_W}x{sh}+{current_x}+0")
+            try:
+                self._panel.geometry(f"{_PANEL_W}x{sh}+{current_x}+0")
+                self._panel.attributes("-alpha", min(1.0, progress))
+            except Exception:
+                pass
             
             if self._panel_backdrop:
                 try:

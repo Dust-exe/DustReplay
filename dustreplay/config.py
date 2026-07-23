@@ -167,6 +167,28 @@ def migrate():
     if (_cfg.get("overlay_corner") or "tr") not in _allowed_oc:
         _cfg["overlay_corner"] = "tr"
         changed = True
+    # ── Upgrade old low-quality defaults to high-quality defaults ──
+    try:
+        _q = int(_cfg.get("quality") or 20)
+        if _q >= 30:
+            _cfg["quality"] = 20
+            changed = True
+    except (TypeError, ValueError):
+        pass
+    try:
+        _mh = int(_cfg.get("capture_max_height") or 0)
+        if _mh == 540:
+            _cfg["capture_max_height"] = 0
+            changed = True
+    except (TypeError, ValueError):
+        pass
+    try:
+        _fps = int(_cfg.get("fps") or 60)
+        if _fps <= 20:
+            _cfg["fps"] = 60
+            changed = True
+    except (TypeError, ValueError):
+        pass
     if changed:
         try:
             save()

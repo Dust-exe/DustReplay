@@ -4,6 +4,7 @@ import subprocess
 import threading
 from datetime import timedelta
 import customtkinter as ctk
+import re
 
 import config
 import i18n
@@ -38,7 +39,6 @@ class GifMakerDialog(ctk.CTkToplevel):
                 ff, "-i", self.video_path
             ], capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
             
-            import re
             match = re.search(r"Duration:\s*(\d+):(\d+):(\d+\.\d+)", r.stderr)
             if match:
                 h, m, s = match.groups()
@@ -78,23 +78,38 @@ class GifMakerDialog(ctk.CTkToplevel):
         self.main_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.main_frame.pack(fill="both", expand=True, padx=20, pady=20)
 
+        # Selected Duration prominently displayed
+        self.lbl_selected_range = ctk.CTkLabel(
+            self.main_frame, 
+            text=self._get_range_text(), 
+            font=ctk.CTkFont(weight="bold", size=14),
+            text_color=theme.TEXT
+        )
+        self.lbl_selected_range.pack(pady=(10, 5))
+
         # Timeline sliders
         self.slider_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        self.slider_frame.pack(fill="x", pady=20)
+        self.slider_frame.pack(fill="x", pady=10)
         
-        self.lbl_start = ctk.CTkLabel(self.slider_frame, text=self._format_time(self.start_val), width=45)
-        self.lbl_start.pack(side="left")
-        
-        self.slider_start = ctk.CTkSlider(self.slider_frame, from_=0, to=self.duration, command=self._on_start_slide, button_color=theme.ACCENT, progress_color=theme.ACCENT_DEEP)
+        # Start
+        start_row = ctk.CTkFrame(self.slider_frame, fg_color="transparent")
+        start_row.pack(fill="x", pady=5)
+        ctk.CTkLabel(start_row, text=i18n.t("clip_start"), width=45, text_color=theme.TEXT_SOFT).pack(side="left")
+        self.lbl_start = ctk.CTkLabel(start_row, text=self._format_time(self.start_val), width=45)
+        self.lbl_start.pack(side="left", padx=5)
+        self.slider_start = ctk.CTkSlider(start_row, from_=0, to=self.duration, command=self._on_start_slide, button_color=theme.ACCENT, progress_color=theme.ACCENT_DEEP)
         self.slider_start.set(self.start_val)
         self.slider_start.pack(side="left", fill="x", expand=True, padx=10)
         
-        self.slider_end = ctk.CTkSlider(self.slider_frame, from_=0, to=self.duration, command=self._on_end_slide, button_color=theme.ACCENT, progress_color=theme.TEXT_DIM)
+        # End
+        end_row = ctk.CTkFrame(self.slider_frame, fg_color="transparent")
+        end_row.pack(fill="x", pady=5)
+        ctk.CTkLabel(end_row, text=i18n.t("clip_end"), width=45, text_color=theme.TEXT_SOFT).pack(side="left")
+        self.lbl_end = ctk.CTkLabel(end_row, text=self._format_time(self.end_val), width=45)
+        self.lbl_end.pack(side="left", padx=5)
+        self.slider_end = ctk.CTkSlider(end_row, from_=0, to=self.duration, command=self._on_end_slide, button_color=theme.ACCENT, progress_color=theme.TEXT_DIM)
         self.slider_end.set(self.end_val)
         self.slider_end.pack(side="left", fill="x", expand=True, padx=10)
-        
-        self.lbl_end = ctk.CTkLabel(self.slider_frame, text=self._format_time(self.end_val), width=45)
-        self.lbl_end.pack(side="left")
 
         # Settings controls
         settings_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
@@ -111,22 +126,38 @@ class GifMakerDialog(ctk.CTkToplevel):
         self.seg_res.grid(row=1, column=1, pady=10, sticky="w")
 
         self.lbl_warning = ctk.CTkLabel(self.main_frame, text="", text_color=theme.WARNING)
-        self.lbl_warning.pack(pady=5)
+        self.lbl_warning.pack(pady=2)
         
         self.lbl_estimate = ctk.CTkLabel(self.main_frame, text="", text_color=theme.TEXT_SOFT)
-        self.lbl_estimate.pack(pady=5)
+        self.lbl_estimate.pack(pady=2)
+
+        # BIG Obvious Create Button
+        self.btn_create = ctk.CTkButton(
+            self.main_frame, 
+            text=i18n.t("gif_create"), 
+            font=ctk.CTkFont(weight="bold", size=16),
+            fg_color=theme.ACCENT, 
+            hover_color=theme.ACCENT_HOVER, 
+            height=40,
+            command=self._do_create
+        )
+        self.btn_create.pack(pady=(10, 5), fill="x", padx=40)
 
         # Progress and Action
         self.progress = ctk.CTkProgressBar(self.main_frame, progress_color=theme.ACCENT)
         self.progress.set(0)
         
         self.lbl_status = ctk.CTkLabel(self.main_frame, text="", text_color=theme.TEXT_SOFT)
-        self.lbl_status.pack(pady=5)
-
-        self.btn_create = ctk.CTkButton(self.main_frame, text=i18n.t("gif_create"), fg_color=theme.ACCENT, hover_color=theme.ACCENT_HOVER, command=self._do_create)
-        self.btn_create.pack(pady=10)
+        self.lbl_status.pack(pady=2)
         
         self._update_estimate()
+
+    def _get_range_text(self):
+        sel_dur = max(0, self.end_val - self.start_val)
+        return f"✂️ {i18n.t('clip_selected_range')}: {self._format_time(self.start_val)} → {self._format_time(self.end_val)} ({int(sel_dur)} {i18n.t('clip_seconds')})"
+
+    def _update_range_text(self):
+        self.lbl_selected_range.configure(text=self._get_range_text())
 
     def _start_move(self, event):
         self._x = event.x
@@ -146,6 +177,7 @@ class GifMakerDialog(ctk.CTkToplevel):
         self.start_val = val
         self.lbl_start.configure(text=self._format_time(val))
         self._check_duration()
+        self._update_range_text()
 
     def _on_end_slide(self, val):
         if val <= self.slider_start.get():
@@ -154,6 +186,7 @@ class GifMakerDialog(ctk.CTkToplevel):
         self.end_val = val
         self.lbl_end.configure(text=self._format_time(val))
         self._check_duration()
+        self._update_range_text()
 
     def _check_duration(self):
         dur = self.end_val - self.start_val
@@ -180,38 +213,46 @@ class GifMakerDialog(ctk.CTkToplevel):
         
         fps = self.seg_fps.get()
         height = self.seg_res.get().replace("p", "")
+        start_v = self.start_val
+        end_v = self.end_val
 
-        threading.Thread(target=self._create_worker, args=(fps, height), daemon=True).start()
+        threading.Thread(target=self._create_worker, args=(fps, height, start_v, end_v), daemon=True).start()
 
-    def _create_worker(self, fps, height):
+    def _create_worker(self, fps, height, start_v, end_v):
         try:
             ff = config.resolve_ffmpeg_exe()
             od = os.path.join(config.get("output_dir"), "gifs")
             os.makedirs(od, exist_ok=True)
+            
+            # Use os.makedirs BEFORE palettegen
             os.makedirs(config.TEMP_DIR, exist_ok=True)
             
             f = os.path.basename(self.video_path)
             n, _ = os.path.splitext(f)
             out_path = os.path.join(od, f"{n}.gif")
-            pal_path = os.path.join(config.TEMP_DIR, f"pal_{n}.png")
+            
+            # Unique palette path to avoid special char issues or concurrency
+            pal_path = os.path.join(config.TEMP_DIR, f"pal_{hash(self.video_path) & 0xFFFFFF:06x}.png")
             
             if height == "480": width = 854
             elif height == "360": width = 640
             else: width = 426
             
-            dur = self.end_val - self.start_val
+            dur = end_v - start_v
             
             cmd1 = [
-                ff, "-y", "-i", self.video_path, "-ss", str(self.start_val), "-t", str(dur),
+                ff, "-y", "-i", self.video_path, "-ss", str(start_v), "-t", str(dur),
                 "-vf", f"fps={fps},scale={width}:-1:flags=lanczos,palettegen=stats_mode=diff",
                 pal_path
             ]
-            r1 = subprocess.run(cmd1, capture_output=True, creationflags=subprocess.CREATE_NO_WINDOW)
-            if r1.returncode != 0:
-                raise Exception("Palettegen failed.")
+            r1 = subprocess.run(cmd1, capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
+            
+            if not os.path.isfile(pal_path):
+                err_msg = r1.stderr[-200:] if r1.stderr else "Palettegen failed silently."
+                raise Exception(err_msg)
                 
             cmd2 = [
-                ff, "-y", "-i", self.video_path, "-ss", str(self.start_val), "-t", str(dur),
+                ff, "-y", "-i", self.video_path, "-ss", str(start_v), "-t", str(dur),
                 "-i", pal_path,
                 "-lavfi", f"fps={fps},scale={width}:-1:flags=lanczos[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=5",
                 out_path

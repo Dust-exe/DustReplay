@@ -5,6 +5,7 @@ import threading
 from datetime import timedelta
 import customtkinter as ctk
 from PIL import Image
+import re
 
 import config
 import i18n
@@ -41,13 +42,11 @@ class ClipEditor(ctk.CTkToplevel):
                 ff, "-i", self.video_path
             ], capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
             
-            import re
             match = re.search(r"Duration:\s*(\d+):(\d+):(\d+\.\d+)", r.stderr)
             if match:
                 h, m, s = match.groups()
                 return float(h)*3600 + float(m)*60 + float(s)
             
-            # Fallback if regex fails but duration is there
             for line in r.stderr.splitlines():
                 if "Duration:" in line:
                     parts = line.split("Duration:")[1].split(",")[0].strip()
@@ -96,41 +95,72 @@ class ClipEditor(ctk.CTkToplevel):
             lbl.pack(side="left", expand=True, fill="both", padx=2)
             self.thumb_labels.append(lbl)
 
+        # Selected Duration prominently displayed
+        self.lbl_selected_range = ctk.CTkLabel(
+            self.main_frame, 
+            text=self._get_range_text(), 
+            font=ctk.CTkFont(weight="bold", size=14),
+            text_color=theme.TEXT
+        )
+        self.lbl_selected_range.pack(pady=(10, 5))
+
         # Timeline sliders
         self.slider_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        self.slider_frame.pack(fill="x", pady=10)
+        self.slider_frame.pack(fill="x", pady=5)
         
-        self.lbl_start = ctk.CTkLabel(self.slider_frame, text=self._format_time(0), width=45)
-        self.lbl_start.pack(side="left")
-        
-        self.slider_start = ctk.CTkSlider(self.slider_frame, from_=0, to=self.duration, command=self._on_start_slide, button_color=theme.ACCENT, progress_color=theme.ACCENT_DEEP)
+        # Start
+        start_row = ctk.CTkFrame(self.slider_frame, fg_color="transparent")
+        start_row.pack(fill="x", pady=5)
+        ctk.CTkLabel(start_row, text=i18n.t("clip_start"), width=45, text_color=theme.TEXT_SOFT).pack(side="left")
+        self.lbl_start = ctk.CTkLabel(start_row, text=self._format_time(0), width=45)
+        self.lbl_start.pack(side="left", padx=5)
+        self.slider_start = ctk.CTkSlider(start_row, from_=0, to=self.duration, command=self._on_start_slide, button_color=theme.ACCENT, progress_color=theme.ACCENT_DEEP)
         self.slider_start.set(0)
         self.slider_start.pack(side="left", fill="x", expand=True, padx=10)
         
-        self.slider_end = ctk.CTkSlider(self.slider_frame, from_=0, to=self.duration, command=self._on_end_slide, button_color=theme.ACCENT, progress_color=theme.TEXT_DIM)
+        # End
+        end_row = ctk.CTkFrame(self.slider_frame, fg_color="transparent")
+        end_row.pack(fill="x", pady=5)
+        ctk.CTkLabel(end_row, text=i18n.t("clip_end"), width=45, text_color=theme.TEXT_SOFT).pack(side="left")
+        self.lbl_end = ctk.CTkLabel(end_row, text=self._format_time(self.duration), width=45)
+        self.lbl_end.pack(side="left", padx=5)
+        self.slider_end = ctk.CTkSlider(end_row, from_=0, to=self.duration, command=self._on_end_slide, button_color=theme.ACCENT, progress_color=theme.TEXT_DIM)
         self.slider_end.set(self.duration)
         self.slider_end.pack(side="left", fill="x", expand=True, padx=10)
-        
-        self.lbl_end = ctk.CTkLabel(self.slider_frame, text=self._format_time(self.duration), width=45)
-        self.lbl_end.pack(side="left")
-        
+
         # Mode selection
         mode_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        mode_frame.pack(pady=20)
+        mode_frame.pack(pady=10)
         ctk.CTkLabel(mode_frame, text=i18n.t("clip_trim_mode")).pack(side="left", padx=10)
         self.seg_mode = ctk.CTkSegmentedButton(mode_frame, values=[i18n.t("clip_copy_fast"), i18n.t("clip_reencode_precise")], selected_color=theme.ACCENT, selected_hover_color=theme.ACCENT_HOVER)
         self.seg_mode.set(i18n.t("clip_copy_fast"))
         self.seg_mode.pack(side="left")
+
+        # BIG Obvious trim button
+        self.btn_trim = ctk.CTkButton(
+            self.main_frame, 
+            text=i18n.t("clip_trim"), 
+            font=ctk.CTkFont(weight="bold", size=16),
+            fg_color=theme.ACCENT, 
+            hover_color=theme.ACCENT_HOVER, 
+            height=40,
+            command=self._do_trim
+        )
+        self.btn_trim.pack(pady=(15, 5), fill="x", padx=40)
 
         # Progress and Action
         self.progress = ctk.CTkProgressBar(self.main_frame, progress_color=theme.ACCENT)
         self.progress.set(0)
         
         self.lbl_status = ctk.CTkLabel(self.main_frame, text="", text_color=theme.TEXT_SOFT)
-        self.lbl_status.pack(pady=5)
+        self.lbl_status.pack(pady=2)
 
-        self.btn_trim = ctk.CTkButton(self.main_frame, text=i18n.t("clip_trim"), fg_color=theme.ACCENT, hover_color=theme.ACCENT_HOVER, command=self._do_trim)
-        self.btn_trim.pack(pady=10)
+    def _get_range_text(self):
+        sel_dur = max(0, self.end_val - self.start_val)
+        return f"✂️ {i18n.t('clip_selected_range')}: {self._format_time(self.start_val)} → {self._format_time(self.end_val)} ({int(sel_dur)} {i18n.t('clip_seconds')})"
+
+    def _update_range_text(self):
+        self.lbl_selected_range.configure(text=self._get_range_text())
 
     def _start_move(self, event):
         self._x = event.x
@@ -149,6 +179,7 @@ class ClipEditor(ctk.CTkToplevel):
             self.slider_start.set(val)
         self.start_val = val
         self.lbl_start.configure(text=self._format_time(val))
+        self._update_range_text()
 
     def _on_end_slide(self, val):
         if val <= self.slider_start.get():
@@ -156,6 +187,7 @@ class ClipEditor(ctk.CTkToplevel):
             self.slider_end.set(val)
         self.end_val = val
         self.lbl_end.configure(text=self._format_time(val))
+        self._update_range_text()
 
     def _extract_thumbnails(self):
         if self.duration <= 0:

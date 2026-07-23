@@ -1,5 +1,5 @@
 #define MyAppName "DustReplay"
-#define MyAppVersion "3.3.3"
+#define MyAppVersion "3.5.1"
 #define MyAppPublisher "DustReplay"
 #define MyAppURL "https://github.com/Dust-exe/dustreplay"
 #define MyAppExeName "DustReplay.exe"
