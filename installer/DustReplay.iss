@@ -1,5 +1,5 @@
 #define MyAppName "DustReplay"
-#define MyAppVersion "3.5.2"
+#define MyAppVersion "3.5.3"
 #define MyAppPublisher "DustReplay"
 #define MyAppURL "https://github.com/Dust-exe/dustreplay"
 #define MyAppExeName "DustReplay.exe"
@@ -38,7 +38,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "..\dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\dist\DustReplay\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\bundle\ffmpeg\ffmpeg.exe"; DestDir: "{app}\ffmpeg"; Flags: ignoreversion
 Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "..\LEGAL.md"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist

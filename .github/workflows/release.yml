@@ -33,14 +33,14 @@ jobs:
         shell: pwsh
         run: pwsh -File installer/bundle-ffmpeg.ps1 -RepoRoot "${{ github.workspace }}"
 
-      - name: PyInstaller (DustReplay.exe)
+      - name: PyInstaller (DustReplay)
         working-directory: dustreplay
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path ../dist, ../build/pyinstaller_work | Out-Null
           $base = @(
             "-m", "PyInstaller",
-            "--onefile", "--noconsole",
+            "--onedir", "--noconsole",
             "--name", "DustReplay",
             "--distpath", "../dist",
             "--workpath", "../build/pyinstaller_work",
@@ -69,7 +69,7 @@ jobs:
           } else {
             python @base main.py
           }
-          if (-not (Test-Path ../dist/DustReplay.exe)) { throw "PyInstaller did not produce dist/DustReplay.exe" }
+          if (-not (Test-Path ../dist/DustReplay/DustReplay.exe)) { throw "PyInstaller did not produce dist/DustReplay/DustReplay.exe" }
 
       - name: Install Inno Setup
         shell: pwsh
@@ -90,7 +90,7 @@ jobs:
         shell: pwsh
         run: |
           Get-ChildItem -LiteralPath (Join-Path $env:GITHUB_WORKSPACE "dist") | Format-Table Name, Length
-          $exe = Join-Path $env:GITHUB_WORKSPACE "dist\DustReplay.exe"
+          $exe = Join-Path $env:GITHUB_WORKSPACE "dist\DustReplay\DustReplay.exe"
           $setup = Join-Path $env:GITHUB_WORKSPACE "dist\DustReplay-Setup.exe"
           if (-not (Test-Path -LiteralPath $exe)) { throw "Missing PyInstaller output: $exe" }
           if (-not (Test-Path -LiteralPath $setup)) { throw "Missing installer: $setup" }
