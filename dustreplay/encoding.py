@@ -74,18 +74,32 @@ def amf_smoke_test(ff_path: str) -> bool:
         return False
 
 
-def resolve_encoder(ff_path: str) -> str:
+def resolve_encoder(ff_path: str, force_redetect=False) -> str:
     """Resolve config video_encoder: auto | nvenc | amf | cpu."""
     mode = (config.get("video_encoder") or "auto").lower()
+
+    cached = config.get("cached_encoders")
+    if not isinstance(cached, dict):
+        cached = {}
+
+    if force_redetect or "nvenc" not in cached or "amf" not in cached:
+        cached["nvenc"] = nvenc_smoke_test(ff_path)
+        cached["amf"] = amf_smoke_test(ff_path)
+        config.set("cached_encoders", cached)
+        config.save()
+
+    has_nvenc = cached["nvenc"]
+    has_amf = cached["amf"]
+
     if mode in ("cpu", "libx264", "x264"):
         return ENC_CPU
     if mode in ("nvenc", "nvidia", "gpu", "h264_nvenc"):
-        return ENC_NVENC if nvenc_smoke_test(ff_path) else ENC_CPU
+        return ENC_NVENC if has_nvenc else ENC_CPU
     if mode in ("amf", "amd", "h264_amf"):
-        return ENC_AMF if amf_smoke_test(ff_path) else ENC_CPU
-    if nvenc_smoke_test(ff_path):
+        return ENC_AMF if has_amf else ENC_CPU
+    if has_nvenc:
         return ENC_NVENC
-    if amf_smoke_test(ff_path):
+    if has_amf:
         return ENC_AMF
     return ENC_CPU
 

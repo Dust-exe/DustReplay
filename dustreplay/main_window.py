@@ -248,13 +248,6 @@ def _resolve_logo_path() -> str | None:
     """User logo + bundled branding/logo.png."""
     candidates = [
         branding_paths.logo_png_path(),
-        os.path.join(
-            os.path.expanduser("~"),
-            "Desktop",
-            "dasasd",
-            "dust logo.png",
-        ),
-        r"C:\Users\kaan3\Desktop\dasasd\dust logo.png",
     ]
     for p in candidates:
         if p and os.path.isfile(p):

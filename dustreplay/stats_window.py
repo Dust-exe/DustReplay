@@ -100,27 +100,42 @@ def _subprocess_flags():
     return 0
 
 
+try:
+    import pynvml
+    pynvml.nvmlInit()
+    _nvml_handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+    _nvml_available = True
+except Exception:
+    _nvml_available = False
+
+
 def _query_nvidia_gpu_util() -> float | None:
-    try:
-        r = subprocess.run(
-            [
-                "nvidia-smi",
-                "--query-gpu=utilization.gpu",
-                "--format=csv,noheader,nounits",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=2,
-            creationflags=_subprocess_flags(),
-        )
-        if r.returncode != 0 or not (r.stdout or "").strip():
+    if not _nvml_available:
+        try:
+            r = subprocess.run(
+                [
+                    "nvidia-smi",
+                    "--query-gpu=utilization.gpu",
+                    "--format=csv,noheader,nounits",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=2,
+                creationflags=_subprocess_flags(),
+            )
+            if r.returncode != 0 or not (r.stdout or "").strip():
+                return None
+            line = (r.stdout or "").strip().splitlines()[0].strip()
+            return float(line)
+        except FileNotFoundError:
             return None
-        line = (r.stdout or "").strip().splitlines()[0].strip()
-        return float(line)
-    except FileNotFoundError:
-        return None
-    except Exception as e:
-        logger.debug("nvidia-smi: %s", e)
+        except Exception as e:
+            logger.debug("nvidia-smi: %s", e)
+            return None
+    try:
+        util = pynvml.nvmlDeviceGetUtilizationRates(_nvml_handle)
+        return float(util.gpu)
+    except Exception:
         return None
 
 

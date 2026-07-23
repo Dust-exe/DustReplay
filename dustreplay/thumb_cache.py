@@ -33,6 +33,11 @@ def _flags():
         return 0
 
 
+import concurrent.futures
+
+_thumb_pool = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+
+
 def ensure_thumb_jpeg(fp: str, master, on_path) -> None:
     """Call on_path(jpeg_path) on Tk thread when ready (master.after)."""
 
@@ -103,4 +108,4 @@ def ensure_thumb_jpeg(fp: str, master, on_path) -> None:
         except Exception:
             deliver()
 
-    threading.Thread(target=run, daemon=True).start()
+    _thumb_pool.submit(run)

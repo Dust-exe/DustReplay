@@ -24,3 +24,8 @@ src/**/bin/
 src/**/obj/
 dist-csharp/
 *.user
+
+setting/settings.local.json
+*.pid
+dustreplay/branding/*.local.*
+.gemini/

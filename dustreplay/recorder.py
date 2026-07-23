@@ -5,6 +5,7 @@ import encoding
 import glob
 import logging
 import os
+import psutil
 import subprocess
 import threading
 import time
@@ -30,12 +31,18 @@ def _kill_stale_ffmpeg():
             return
         with open(_PID_FILE, "r") as f:
             old_pid = int(f.read().strip())
-        subprocess.run(
-            ["taskkill", "/F", "/PID", str(old_pid)],
-            capture_output=True,
-            creationflags=subprocess.CREATE_NO_WINDOW,
-        )
-        logger.info("Terminated stale ffmpeg PID=%s", old_pid)
+        try:
+            if psutil.Process(old_pid).name().lower() == 'ffmpeg.exe':
+                subprocess.run(
+                    ["taskkill", "/F", "/PID", str(old_pid)],
+                    capture_output=True,
+                    creationflags=subprocess.CREATE_NO_WINDOW,
+                )
+                logger.info("Terminated stale ffmpeg PID=%s", old_pid)
+            else:
+                logger.warning("Stale PID %s is not ffmpeg, ignoring", old_pid)
+        except psutil.NoSuchProcess:
+            pass
     except Exception as e:
         logger.debug("Stale PID cleanup: %s", e)
     try:
@@ -427,7 +434,7 @@ class Recorder:
                     stdin=subprocess.PIPE,
                     stdout=subprocess.DEVNULL,
                     stderr=err,
-                    creationflags=subprocess.CREATE_NO_WINDOW,
+                    creationflags=subprocess.CREATE_NO_WINDOW | 0x00004000,
                 )
             except Exception as e:
                 logger.error("Manual record failed to start: %s", e)
@@ -471,7 +478,7 @@ class Recorder:
             stdin=subprocess.PIPE,
             stdout=subprocess.DEVNULL,
             stderr=stderr_log,
-            creationflags=subprocess.CREATE_NO_WINDOW,
+            creationflags=subprocess.CREATE_NO_WINDOW | 0x00004000,
         )
         try:
             with open(_PID_FILE, "w") as f:
@@ -486,7 +493,12 @@ class Recorder:
                 self._maybe_restart_for_profile()
             except Exception as e:
                 logger.debug("game profile loop: %s", e)
-            time.sleep(2.5)
+            import game_detect
+            try:
+                active = game_detect.is_fullscreen_game_active()
+            except Exception:
+                active = False
+            time.sleep(2.0 if active else 5.0)
 
     def _maybe_restart_for_profile(self):
         sig = _capture_profile_signature()

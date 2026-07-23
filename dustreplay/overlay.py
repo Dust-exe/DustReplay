@@ -35,6 +35,7 @@ class RecordingOverlay:
         self._master = master
         self._win = None
         self._canvas = None
+        self._is_showing = False
         if config.get("overlay_enabled"):
             self._build()
 
@@ -89,6 +90,25 @@ class RecordingOverlay:
         self._apply_pos()
         self._win.withdraw()
         self._schedule_clickthrough()
+        self._pulse()
+
+    def _pulse(self):
+        if not self._win:
+            return
+        if self._is_showing:
+            import time
+            import math
+            val = (math.sin(time.time() * math.pi) + 1) / 2
+            try:
+                self._win.attributes("-alpha", 0.6 + val * 0.4)
+            except Exception:
+                pass
+        else:
+            try:
+                self._win.attributes("-alpha", 1.0)
+            except Exception:
+                pass
+        self._win.after(50, self._pulse)
 
     def _apply_pos(self):
         if not self._win:
@@ -112,6 +132,7 @@ class RecordingOverlay:
     def show(self):
         if self._win:
             try:
+                self._is_showing = True
                 self._apply_pos()
                 self._win.deiconify()
                 self._win.lift()
@@ -122,6 +143,7 @@ class RecordingOverlay:
     def hide(self):
         if self._win:
             try:
+                self._is_showing = False
                 self._win.withdraw()
             except Exception:
                 pass

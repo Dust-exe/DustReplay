@@ -41,7 +41,7 @@ def register():
                 "/sc",
                 "onlogon",
                 "/rl",
-                "highest",
+                "limited",
                 "/f",
             ],
             check=True,

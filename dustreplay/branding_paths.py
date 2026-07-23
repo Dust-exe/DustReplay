@@ -11,13 +11,4 @@ def resource_root() -> str:
 
 
 def logo_png_path() -> str:
-    bundled = os.path.join(resource_root(), "branding", "logo.png")
-    if os.path.isfile(bundled):
-        return bundled
-    for extra in (
-        os.path.join(os.path.expanduser("~"), "Desktop", "dasasd", "dust logo.png"),
-        r"C:\Users\kaan3\Desktop\dasasd\dust logo.png",
-    ):
-        if os.path.isfile(extra):
-            return extra
-    return bundled
+    return os.path.join(resource_root(), "branding", "logo.png")

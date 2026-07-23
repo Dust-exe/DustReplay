@@ -9,6 +9,8 @@ import config
 import i18n
 import theme
 import thumb_cache
+from clip_editor import ClipEditor
+from gif_maker import GifMakerDialog
 
 _P = theme.P
 _PD = theme.PD
@@ -188,6 +190,26 @@ class RecordingsPage(ctk.CTkFrame):
             border_color=_P,
             command=lambda: self._play_file(fp),
         ).place(relx=1.0, rely=0.5, anchor="e", x=-72)
+        ctk.CTkButton(
+            r,
+            text="🎞️ GIF",
+            width=60,
+            height=30,
+            fg_color=theme.BTN_DARK,
+            hover_color=theme.ACCENT_HOVER,
+            corner_radius=8,
+            command=lambda: GifMakerDialog(self, fp, self.refresh),
+        ).place(relx=1.0, rely=0.5, anchor="e", x=-142)
+        ctk.CTkButton(
+            r,
+            text="✂️ Trim",
+            width=60,
+            height=30,
+            fg_color=theme.BTN_DARK,
+            hover_color=theme.ACCENT_HOVER,
+            corner_radius=8,
+            command=lambda: ClipEditor(self, fp, self.refresh),
+        ).place(relx=1.0, rely=0.5, anchor="e", x=-212)
         return r
 
     def _open_folder(self):
