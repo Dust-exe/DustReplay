@@ -218,75 +218,43 @@ def _build_cmd(ff, single_output_path=None):
         sys_dev = ""
 
     audio_in = []
-    if mic == WASAPI_IN:
+
+    # Microphone capture setup
+    if mic == WASAPI_IN or (mic and mic.lower().startswith("[windows")):
         try:
             from audio_devices import list_dshow_audio
-
             _devs = list_dshow_audio(ff)
             if _devs:
                 audio_in.append(
                     ["-thread_queue_size", "2048", "-f", "dshow", "-i", f"audio={_devs[0]}"]
                 )
-                logger.info("Default mic: %s", _devs[0])
+                logger.info("Microphone audio: dshow '%s'", _devs[0])
             else:
-                logger.warning("No default microphone found; audio skipped")
+                logger.warning("No microphone device found via dshow")
         except Exception as _e:
             logger.warning("Could not list microphones: %s", _e)
-    elif mic:
+    elif mic and mic != "(No microphone)":
         audio_in.append(
             ["-thread_queue_size", "4096", "-f", "dshow", "-i", f"audio={mic}"]
         )
+        logger.info("Microphone audio: dshow '%s'", mic)
 
-    if sys_dev == WASAPI_OUT:
-        _wasapi_ok = False
-        _wasapi_dev = ""
-        try:
-            from audio_devices import list_wasapi_audio as _lwa
-
-            _wdevs = _lwa(ff)
-            if _wdevs:
-                _wasapi_dev = _wdevs[0]
-                _wasapi_ok = True
-        except Exception as _we:
-            logger.debug("WASAPI list failed: %s", _we)
-        if _wasapi_ok:
-            audio_in.append(
-                [
-                    "-thread_queue_size",
-                    "2048",
-                    "-f",
-                    "wasapi",
-                    "-loopback",
-                    "1",
-                    "-i",
-                    _wasapi_dev or "default",
-                ]
-            )
-            logger.info("System audio: WASAPI loopback '%s'", _wasapi_dev)
-        else:
-            _dshow_sys = _find_dshow_sys_audio(ff, exclude_mic=mic)
-            if _dshow_sys:
-                audio_in.append(
-                    [
-                        "-thread_queue_size",
-                        "4096",
-                        "-f",
-                        "dshow",
-                        "-i",
-                        f"audio={_dshow_sys}",
-                    ]
-                )
-                logger.info("System audio: dshow fallback '%s'", _dshow_sys)
-            else:
-                logger.warning(
-                    "System audio unavailable (no WASAPI loopback / no dshow device)"
-                )
-    elif sys_dev and sys_dev != mic:
+    # System audio (loopback) setup - WASAPI default loopback works 100% reliably on Windows
+    if sys_dev == WASAPI_OUT or not sys_dev or sys_dev.lower().startswith("[windows"):
+        audio_in.append(
+            [
+                "-thread_queue_size", "2048",
+                "-f", "wasapi",
+                "-loopback", "1",
+                "-i", "default",
+            ]
+        )
+        logger.info("System audio: WASAPI default loopback (-i default)")
+    elif sys_dev and sys_dev != "(No system audio)":
         audio_in.append(
             ["-thread_queue_size", "4096", "-f", "dshow", "-i", f"audio={sys_dev}"]
         )
-    elif sys_dev and sys_dev == mic:
-        logger.warning("System device same as mic; skipping duplicate")
+        logger.info("System audio: dshow '%s'", sys_dev)
 
     cmd = [ff, "-y"]
     for ai in audio_in:

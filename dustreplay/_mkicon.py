@@ -14,8 +14,19 @@ def _render_icon(sz: int) -> Image.Image:
     path = logo_png_path()
     if not os.path.isfile(path):
         raise FileNotFoundError(f"Missing logo for icon build: {path}")
-    out = Image.new("RGBA", (sz, sz), (*_BG, 255))
+    out = Image.new("RGBA", (sz, sz), (0, 0, 0, 0))
     src = Image.open(path).convert("RGBA")
+    
+    # Strip black/dark background to leave clean transparent hole mark
+    datas = src.getdata()
+    new_data = []
+    for item in datas:
+        if item[0] < 22 and item[1] < 22 and item[2] < 28:
+            new_data.append((0, 0, 0, 0))
+        else:
+            new_data.append(item)
+    src.putdata(new_data)
+
     margin = max(1, int(sz * 0.06))
     inner = sz - 2 * margin
     src.thumbnail((inner, inner), Image.Resampling.LANCZOS)

@@ -1,11 +1,11 @@
 import logging
 import os
+import re
 import subprocess
 import threading
 from datetime import timedelta
 import customtkinter as ctk
 from PIL import Image
-import re
 
 import config
 import i18n
@@ -13,46 +13,129 @@ import theme
 
 logger = logging.getLogger(__name__)
 
+
+class TimelineRangeBar(ctk.CTkCanvas):
+    """Unified single-bar dual-thumb range selector for timeline trimming."""
+
+    def __init__(self, master, duration: float, on_change=None, **kwargs):
+        super().__init__(master, height=36, bg="#12111c", highlightthickness=0, **kwargs)
+        self.duration = max(0.1, duration)
+        self.on_change = on_change
+        self.start_val = 0.0
+        self.end_val = self.duration
+        self._dragging = None
+
+        self.bind("<Button-1>", self._on_press)
+        self.bind("<B1-Motion>", self._on_drag)
+        self.bind("<ButtonRelease-1>", self._on_release)
+        self.bind("<Configure>", self._redraw)
+
+    def set_range(self, start, end):
+        self.start_val = max(0.0, min(self.duration, start))
+        self.end_val = max(self.start_val + 0.5, min(self.duration, end))
+        self._redraw()
+
+    def _redraw(self, event=None):
+        self.delete("all")
+        w = max(100, self.winfo_width())
+        h = max(20, self.winfo_height())
+
+        # Dark track background
+        self.create_rectangle(0, 0, w, h, fill="#12111c", outline="#28263a", width=1)
+
+        x_start = int((self.start_val / self.duration) * w)
+        x_end = int((self.end_val / self.duration) * w)
+
+        # Selected range highlight
+        if x_end > x_start:
+            self.create_rectangle(x_start, 2, x_end, h - 2, fill=theme.ACCENT, outline="")
+
+        # Left handle knob
+        self.create_rectangle(max(0, x_start - 7), 0, min(w, x_start + 7), h, fill="#a29bfe", outline="#ffffff", width=1)
+        self.create_line(x_start, 6, x_start, h - 6, fill="#12111c", width=2)
+
+        # Right handle knob
+        self.create_rectangle(max(0, x_end - 7), 0, min(w, x_end + 7), h, fill="#a29bfe", outline="#ffffff", width=1)
+        self.create_line(x_end, 6, x_end, h - 6, fill="#12111c", width=2)
+
+    def _on_press(self, event):
+        w = max(100, self.winfo_width())
+        x_start = int((self.start_val / self.duration) * w)
+        x_end = int((self.end_val / self.duration) * w)
+
+        if abs(event.x - x_start) <= 18:
+            self._dragging = "start"
+        elif abs(event.x - x_end) <= 18:
+            self._dragging = "end"
+        else:
+            if abs(event.x - x_start) < abs(event.x - x_end):
+                self._dragging = "start"
+            else:
+                self._dragging = "end"
+            self._on_drag(event)
+
+    def _on_drag(self, event):
+        if not self._dragging:
+            return
+        w = max(100, self.winfo_width())
+        val = max(0.0, min(self.duration, (event.x / w) * self.duration))
+
+        if self._dragging == "start":
+            self.start_val = min(val, self.end_val - 0.5)
+        elif self._dragging == "end":
+            self.end_val = max(val, self.start_val + 0.5)
+
+        self._redraw()
+        if self.on_change:
+            self.on_change(self.start_val, self.end_val)
+
+    def _on_release(self, event):
+        self._dragging = None
+
+
 class ClipEditor(ctk.CTkToplevel):
     def __init__(self, master, video_path: str, on_complete: callable = None):
         super().__init__(master)
         self.video_path = video_path
         self.on_complete = on_complete
-        
+
         self.title(i18n.t("clip_editor_title"))
         self.geometry("700x500")
         self.overrideredirect(True)
         self.configure(fg_color=theme.BG)
         self.attributes("-topmost", True)
-        
+
         self.duration = self._get_duration()
         self.start_val = 0.0
         self.end_val = self.duration
-        
+
         self._build_ui()
         self._extract_thumbnails()
-        
+
     def _get_duration(self) -> float:
         try:
             ff = config.resolve_ffmpeg_exe()
             if not ff:
                 return 0.0
-                
-            r = subprocess.run([
-                ff, "-i", self.video_path
-            ], capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
-            
+
+            r = subprocess.run(
+                [ff, "-i", self.video_path],
+                capture_output=True,
+                text=True,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
+
             match = re.search(r"Duration:\s*(\d+):(\d+):(\d+\.\d+)", r.stderr)
             if match:
                 h, m, s = match.groups()
-                return float(h)*3600 + float(m)*60 + float(s)
-            
+                return float(h) * 3600 + float(m) * 60 + float(s)
+
             for line in r.stderr.splitlines():
                 if "Duration:" in line:
                     parts = line.split("Duration:")[1].split(",")[0].strip()
                     h, m, s = parts.split(":")
-                    return float(h)*3600 + float(m)*60 + float(s)
-                    
+                    return float(h) * 3600 + float(m) * 60 + float(s)
+
             return 0.0
         except Exception as e:
             logger.error("Failed to get duration: %s", e)
@@ -69,25 +152,42 @@ class ClipEditor(ctk.CTkToplevel):
         self.title_bar.pack_propagate(False)
         self.title_bar.bind("<ButtonPress-1>", self._start_move)
         self.title_bar.bind("<B1-Motion>", self._do_move)
-        
-        lbl_title = ctk.CTkLabel(self.title_bar, text=i18n.t("clip_editor_title"), font=ctk.CTkFont(weight="bold", size=14), text_color=theme.TEXT)
+
+        lbl_title = ctk.CTkLabel(
+            self.title_bar,
+            text=i18n.t("clip_editor_title"),
+            font=ctk.CTkFont(weight="bold", size=14),
+            text_color=theme.TEXT,
+        )
         lbl_title.pack(side="left", padx=15)
         lbl_title.bind("<ButtonPress-1>", self._start_move)
         lbl_title.bind("<B1-Motion>", self._do_move)
-        
-        btn_close = ctk.CTkButton(self.title_bar, text="✕", width=30, height=30, fg_color="transparent", hover_color=theme.RED, command=self.destroy)
+
+        btn_close = ctk.CTkButton(
+            self.title_bar,
+            text="✕",
+            width=30,
+            height=30,
+            fg_color="transparent",
+            hover_color=theme.RED,
+            command=self.destroy,
+        )
         btn_close.pack(side="right", padx=5)
 
         self.main_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.main_frame.pack(fill="both", expand=True, padx=20, pady=20)
-        
+
         # Duration label
-        self.lbl_duration = ctk.CTkLabel(self.main_frame, text=f"{i18n.t('clip_duration')}: {self._format_time(self.duration)}", text_color=theme.TEXT_SOFT)
+        self.lbl_duration = ctk.CTkLabel(
+            self.main_frame,
+            text=f"{i18n.t('clip_duration')}: {self._format_time(self.duration)}",
+            text_color=theme.TEXT_SOFT,
+        )
         self.lbl_duration.pack(pady=(0, 10))
 
         # Thumbnails frame
-        self.thumbs_frame = ctk.CTkFrame(self.main_frame, height=80, fg_color=theme.ENTRY_BG)
-        self.thumbs_frame.pack(fill="x", pady=10)
+        self.thumbs_frame = ctk.CTkFrame(self.main_frame, height=76, fg_color=theme.ENTRY_BG)
+        self.thumbs_frame.pack(fill="x", pady=5)
         self.thumbs_frame.pack_propagate(False)
         self.thumb_labels = []
         for i in range(5):
@@ -97,61 +197,50 @@ class ClipEditor(ctk.CTkToplevel):
 
         # Selected Duration prominently displayed
         self.lbl_selected_range = ctk.CTkLabel(
-            self.main_frame, 
-            text=self._get_range_text(), 
+            self.main_frame,
+            text=self._get_range_text(),
             font=ctk.CTkFont(weight="bold", size=14),
-            text_color=theme.TEXT
+            text_color=theme.TEXT,
         )
         self.lbl_selected_range.pack(pady=(10, 5))
 
-        # Timeline sliders
-        self.slider_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        self.slider_frame.pack(fill="x", pady=5)
-        
-        # Start
-        start_row = ctk.CTkFrame(self.slider_frame, fg_color="transparent")
-        start_row.pack(fill="x", pady=5)
-        ctk.CTkLabel(start_row, text=i18n.t("clip_start"), width=45, text_color=theme.TEXT_SOFT).pack(side="left")
-        self.lbl_start = ctk.CTkLabel(start_row, text=self._format_time(0), width=45)
-        self.lbl_start.pack(side="left", padx=5)
-        self.slider_start = ctk.CTkSlider(start_row, from_=0, to=self.duration, command=self._on_start_slide, button_color=theme.ACCENT, progress_color=theme.ACCENT_DEEP)
-        self.slider_start.set(0)
-        self.slider_start.pack(side="left", fill="x", expand=True, padx=10)
-        
-        # End
-        end_row = ctk.CTkFrame(self.slider_frame, fg_color="transparent")
-        end_row.pack(fill="x", pady=5)
-        ctk.CTkLabel(end_row, text=i18n.t("clip_end"), width=45, text_color=theme.TEXT_SOFT).pack(side="left")
-        self.lbl_end = ctk.CTkLabel(end_row, text=self._format_time(self.duration), width=45)
-        self.lbl_end.pack(side="left", padx=5)
-        self.slider_end = ctk.CTkSlider(end_row, from_=0, to=self.duration, command=self._on_end_slide, button_color=theme.ACCENT, progress_color=theme.TEXT_DIM)
-        self.slider_end.set(self.duration)
-        self.slider_end.pack(side="left", fill="x", expand=True, padx=10)
+        # Unified single-bar dual-thumb Range Bar
+        self.range_bar = TimelineRangeBar(
+            self.main_frame,
+            duration=self.duration,
+            on_change=self._on_range_changed,
+        )
+        self.range_bar.pack(fill="x", pady=10, padx=10)
 
         # Mode selection
         mode_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
         mode_frame.pack(pady=10)
         ctk.CTkLabel(mode_frame, text=i18n.t("clip_trim_mode")).pack(side="left", padx=10)
-        self.seg_mode = ctk.CTkSegmentedButton(mode_frame, values=[i18n.t("clip_copy_fast"), i18n.t("clip_reencode_precise")], selected_color=theme.ACCENT, selected_hover_color=theme.ACCENT_HOVER)
+        self.seg_mode = ctk.CTkSegmentedButton(
+            mode_frame,
+            values=[i18n.t("clip_copy_fast"), i18n.t("clip_reencode_precise")],
+            selected_color=theme.ACCENT,
+            selected_hover_color=theme.ACCENT_HOVER,
+        )
         self.seg_mode.set(i18n.t("clip_copy_fast"))
         self.seg_mode.pack(side="left")
 
         # BIG Obvious trim button
         self.btn_trim = ctk.CTkButton(
-            self.main_frame, 
-            text=i18n.t("clip_trim"), 
+            self.main_frame,
+            text=i18n.t("clip_trim"),
             font=ctk.CTkFont(weight="bold", size=16),
-            fg_color=theme.ACCENT, 
-            hover_color=theme.ACCENT_HOVER, 
+            fg_color=theme.ACCENT,
+            hover_color=theme.ACCENT_HOVER,
             height=40,
-            command=self._do_trim
+            command=self._do_trim,
         )
         self.btn_trim.pack(pady=(15, 5), fill="x", padx=40)
 
         # Progress and Action
         self.progress = ctk.CTkProgressBar(self.main_frame, progress_color=theme.ACCENT)
         self.progress.set(0)
-        
+
         self.lbl_status = ctk.CTkLabel(self.main_frame, text="", text_color=theme.TEXT_SOFT)
         self.lbl_status.pack(pady=2)
 
@@ -173,20 +262,9 @@ class ClipEditor(ctk.CTkToplevel):
         y = self.winfo_y() + deltay
         self.geometry(f"+{x}+{y}")
 
-    def _on_start_slide(self, val):
-        if val >= self.slider_end.get():
-            val = self.slider_end.get() - 0.5
-            self.slider_start.set(val)
-        self.start_val = val
-        self.lbl_start.configure(text=self._format_time(val))
-        self._update_range_text()
-
-    def _on_end_slide(self, val):
-        if val <= self.slider_start.get():
-            val = self.slider_start.get() + 0.5
-            self.slider_end.set(val)
-        self.end_val = val
-        self.lbl_end.configure(text=self._format_time(val))
+    def _on_range_changed(self, start, end):
+        self.start_val = start
+        self.end_val = end
         self._update_range_text()
 
     def _extract_thumbnails(self):
@@ -196,18 +274,22 @@ class ClipEditor(ctk.CTkToplevel):
 
     def _thumb_worker(self):
         ff = config.resolve_ffmpeg_exe()
-        if not ff: return
-        
+        if not ff:
+            return
+
         temp_dir = os.path.join(config.APPDATA_DIR, "thumbs")
         os.makedirs(temp_dir, exist_ok=True)
-        
+
         step = self.duration / 5
         for i in range(5):
             t = step * i + (step / 2)
             out_p = os.path.join(temp_dir, f"thumb_{i}.jpg")
-            cmd = [ff, "-y", "-ss", str(t), "-i", self.video_path, "-vframes", "1", "-vf", "scale=120:-1", out_p]
+            cmd = [
+                ff, "-y", "-ss", str(t), "-i", self.video_path,
+                "-vframes", "1", "-vf", "scale=120:-1", out_p
+            ]
             subprocess.run(cmd, capture_output=True, creationflags=subprocess.CREATE_NO_WINDOW)
-            
+
             if os.path.isfile(out_p):
                 try:
                     pil = Image.open(out_p)
@@ -226,7 +308,7 @@ class ClipEditor(ctk.CTkToplevel):
         self.progress.pack(fill="x", pady=10)
         self.progress.start()
         self.lbl_status.configure(text=i18n.t("clip_trimming"), text_color=theme.TEXT_SOFT)
-        
+
         mode = self.seg_mode.get()
         threading.Thread(target=self._trim_worker, args=(mode,), daemon=True).start()
 
@@ -236,16 +318,19 @@ class ClipEditor(ctk.CTkToplevel):
             d, f = os.path.split(self.video_path)
             n, e = os.path.splitext(f)
             out_path = os.path.join(d, f"{n}_trimmed{e}")
-            
-            cmd = [ff, "-y", "-ss", str(self.start_val), "-to", str(self.end_val), "-i", self.video_path]
-            
+
+            cmd = [
+                ff, "-y", "-ss", f"{self.start_val:.2f}", "-to", f"{self.end_val:.2f}",
+                "-i", self.video_path
+            ]
+
             if mode == i18n.t("clip_copy_fast"):
                 cmd.extend(["-c", "copy", "-avoid_negative_ts", "make_zero", out_path])
             else:
                 cmd.extend(["-c:v", "libx264", "-preset", "fast", "-crf", "18", "-c:a", "aac", out_path])
-                
+
             r = subprocess.run(cmd, capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
-            
+
             if r.returncode == 0:
                 self.after(0, self._on_success, out_path)
             else:
@@ -257,7 +342,10 @@ class ClipEditor(ctk.CTkToplevel):
     def _on_success(self, out_path):
         self.progress.stop()
         self.progress.set(1.0)
-        self.lbl_status.configure(text=f"{i18n.t('clip_done')} -> {os.path.basename(out_path)}", text_color=theme.GREEN)
+        self.lbl_status.configure(
+            text=f"{i18n.t('clip_done')} -> {os.path.basename(out_path)}",
+            text_color=theme.GREEN,
+        )
         self.btn_trim.configure(state="normal")
         if self.on_complete:
             self.on_complete()
