@@ -140,16 +140,18 @@ class SettingsPage(ctk.CTkFrame):
         self._strt(s)
 
         from updater import check_for_updates
-        ctk.CTkButton(
+        self._btn_update_check = ctk.CTkButton(
             s,
-            text="Check for Updates",
-            height=32,
+            text=i18n.t("updater_btn_check"),
+            height=36,
+            font=ctk.CTkFont(weight="bold"),
             fg_color=theme.PANEL,
             hover_color=_PH,
             border_width=1,
             border_color=_P,
-            command=lambda: check_for_updates(app=self.app, manual=True),
-        ).pack(pady=(10, 0), padx=14, fill="x")
+            command=self._on_check_updates,
+        )
+        self._btn_update_check.pack(pady=(12, 4), padx=14, fill="x")
 
         lang_fr = ctk.CTkFrame(self, fg_color=theme.PANEL, corner_radius=10)
         lang_fr.pack(fill="x", padx=16, pady=(10, 6))
@@ -185,6 +187,13 @@ class SettingsPage(ctk.CTkFrame):
             corner_radius=12,
             command=self._save,
         ).pack(pady=(4, 16), padx=20, fill="x")
+
+    def _on_check_updates(self):
+        from updater import check_for_updates
+        if hasattr(self, "_btn_update_check") and self._btn_update_check:
+            self._btn_update_check.configure(text=i18n.t("updater_checking"), state="disabled")
+            self.after(3000, lambda: self._btn_update_check.configure(text=i18n.t("updater_btn_check"), state="normal"))
+        check_for_updates(app=self.app or self, manual=True)
 
     def _on_language(self, choice):
         config.set("ui_language", "tr" if choice == "Türkçe" else "en")
