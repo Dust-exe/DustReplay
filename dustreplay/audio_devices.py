@@ -134,18 +134,35 @@ def list_wasapi_audio(ffmpeg_path):
 
 
 def _list_powershell_audio():
-    """Fallback audio device enumeration via Windows CIM/WMI."""
+    """Fallback audio device enumeration via Windows AudioEndpoint class & CIM."""
+    devs = []
     try:
         r = _run([
             "powershell", "-NoProfile", "-Command",
-            "Get-CimInstance Win32_SoundDevice | Where-Object Status -eq 'OK' | Select-Object -ExpandProperty Name"
+            "Get-PnpDevice -Class AudioEndpoint -Status OK | Select-Object -ExpandProperty FriendlyName"
         ], timeout=6)
         if r and r.stdout:
-            lines = [line.strip() for line in _decode(r.stdout).splitlines() if line.strip()]
-            return lines
+            for line in _decode(r.stdout).splitlines():
+                name = line.strip()
+                if name and name not in devs and not name.startswith("Get-PnpDevice"):
+                    devs.append(name)
     except Exception as e:
-        logger.debug("PowerShell audio list failed: %s", e)
-    return []
+        logger.debug("PowerShell AudioEndpoint list failed: %s", e)
+    
+    if not devs:
+        try:
+            r = _run([
+                "powershell", "-NoProfile", "-Command",
+                "Get-CimInstance Win32_SoundDevice | Where-Object Status -eq 'OK' | Select-Object -ExpandProperty Name"
+            ], timeout=6)
+            if r and r.stdout:
+                for line in _decode(r.stdout).splitlines():
+                    name = line.strip()
+                    if name and name not in devs:
+                        devs.append(name)
+        except Exception as e:
+            logger.debug("PowerShell Win32_SoundDevice list failed: %s", e)
+    return devs
 
 
 def list_all_audio(ffmpeg_path):

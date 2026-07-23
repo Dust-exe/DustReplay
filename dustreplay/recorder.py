@@ -622,6 +622,14 @@ class Recorder:
             pass
         return None
 
+    def enable_safe_fallback(self):
+        """Switch backend/audio to safe mode when FFmpeg repeatedly crashes."""
+        logger.warning("Enabling safe capture fallback mode (gdigrab)")
+        config.set("capture_backend", "gdigrab")
+        config.set("sys_audio_device", "")
+        config.set("mic_device", "")
+        config.save()
+
     def get_closed_segments_for_export(self, minutes=None):
         """Export without stopping ffmpeg — keeps 24/7 buffer (no black gaps on save)."""
         if self.manual_proc is not None and self.manual_proc.poll() is None:
@@ -629,19 +637,11 @@ class Recorder:
             return []
         if minutes is None:
             minutes = config.get("buffer_minutes")
-        cutoff = time.time() - (minutes * 60)
+        cutoff = time.time() - (minutes * 60 + 5)
         segs = sorted(
             glob.glob(os.path.join(config.TEMP_DIR, "seg_*.mp4")),
             key=os.path.getmtime,
         )
-        if segs:
-            age = time.time() - os.path.getmtime(segs[-1])
-            try:
-                size = os.path.getsize(segs[-1])
-            except OSError:
-                size = 0
-            if age < self._TAIL_MIN_AGE and size < self._TAIL_MIN_BYTES:
-                segs = segs[:-1]
         result = [
             s
             for s in segs
@@ -657,7 +657,7 @@ class Recorder:
             return []
         if minutes is None:
             minutes = config.get("buffer_minutes")
-        cutoff = time.time() - (minutes * 60)
+        cutoff = time.time() - (minutes * 60 + 5)
         resume = self.running
         with self._lock:
             if resume:
