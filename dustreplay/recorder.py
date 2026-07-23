@@ -257,8 +257,9 @@ def _build_cmd(ff, single_output_path=None):
                     "-f",
                     "wasapi",
                     "-loopback",
+                    "1",
                     "-i",
-                    _wasapi_dev,
+                    _wasapi_dev or "default",
                 ]
             )
             logger.info("System audio: WASAPI loopback '%s'", _wasapi_dev)

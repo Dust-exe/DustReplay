@@ -20,7 +20,7 @@ _ENC_VALUES = ["auto", "nvenc", "amf", "cpu"]
 _PROFILE_VALUES = ["balanced", "low_gpu"]
 _BACKEND_VALUES = ["ddagrab", "gdigrab"]
 _GAME_MODE_VALUES = ["off", "auto", "on"]
-_RES_CAP_VALUES = (0, 1080, 720, 540)
+_RES_CAP_VALUES = (0, 1440, 1080, 720)
 _FLIP_VALUES = ("none", "vertical", "horizontal", "rotate180")
 
 _STATS_CORNER_ORDER = ("tl", "tr", "bl", "br")
@@ -138,6 +138,18 @@ class SettingsPage(ctk.CTkFrame):
 
         self._sec(s, "sec.startup")
         self._strt(s)
+
+        from updater import check_for_updates
+        ctk.CTkButton(
+            s,
+            text="Check for Updates",
+            height=32,
+            fg_color=theme.PANEL,
+            hover_color=_PH,
+            border_width=1,
+            border_color=_P,
+            command=lambda: check_for_updates(app=self.app, manual=True),
+        ).pack(pady=(10, 0), padx=14, fill="x")
 
         lang_fr = ctk.CTkFrame(self, fg_color=theme.PANEL, corner_radius=10)
         lang_fr.pack(fill="x", padx=16, pady=(10, 6))
@@ -470,9 +482,9 @@ class SettingsPage(ctk.CTkFrame):
         try:
             cur_h = int(config.get("capture_max_height"))
         except (TypeError, ValueError):
-            cur_h = 720
+            cur_h = 0
         if cur_h not in _RES_CAP_VALUES:
-            cur_h = 720
+            cur_h = 0
         cur_label = labels[_RES_CAP_VALUES.index(cur_h)]
         r = ctk.CTkFrame(p, fg_color=_PD, corner_radius=8)
         r.pack(fill="x", padx=8, pady=4)

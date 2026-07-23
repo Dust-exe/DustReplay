@@ -17,9 +17,9 @@ _DEFAULTS = {
     "segment_seconds": 10,
     "capture_backend": "ddagrab",
     "game_mode": "auto",
-    "fps": 20,
-    "quality": 36,
-    "capture_max_height": 540,
+    "fps": 60,
+    "quality": 20,
+    "capture_max_height": 0,
     "audio_bitrate_k": 96,
     "video_encoder": "auto",
     "buffer_encoder_profile": "balanced",
@@ -138,9 +138,7 @@ def migrate():
         _cfg["monitor_index"] = 1
         changed = True
     try:
-        if int(_cfg.get("fps") or 20) > 30:
-            _cfg["fps"] = 30
-            changed = True
+        pass
     except (TypeError, ValueError):
         pass
     if "video_encoder" not in _cfg:

@@ -149,6 +149,13 @@ _MSG = {
         "gif_max_duration_warning": "Warning: >15s duration might create a large file",
         "gif_save_as": "Save as",
         "gif_estimated_size": "Estimated size",
+        "updater_title": "Updater",
+        "updater_new_version": "New Update Available!",
+        "updater_changelog": "Changelog:",
+        "updater_btn_update": "Update Now",
+        "updater_btn_later": "Later",
+        "updater_up_to_date": "DustReplay is up to date!",
+        "updater_checking": "Checking for updates...",
     },
     "tr": {
         "nav.home": "\U0001f3e0 Ana Sayfa",
@@ -296,6 +303,13 @@ _MSG = {
         "gif_max_duration_warning": "Uyarı: >15s süre çok büyük dosya oluşturabilir",
         "gif_save_as": "Farklı kaydet",
         "gif_estimated_size": "Tahmini boyut",
+        "updater_title": "Güncelleyici",
+        "updater_new_version": "Yeni Güncelleme Mevcut!",
+        "updater_changelog": "Değişiklikler:",
+        "updater_btn_update": "Şimdi Güncelle",
+        "updater_btn_later": "Daha Sonra",
+        "updater_up_to_date": "DustReplay güncel!",
+        "updater_checking": "Güncellemeler kontrol ediliyor...",
     },
 }
 

@@ -106,6 +106,8 @@ class AppWindow(ctk.CTk):
         self._btray()
         self.overlay = RecordingOverlay(self)
         self._tick()
+        from updater import check_for_updates
+        self.after(3000, lambda: check_for_updates(app=self, manual=False))
 
     def register_global_hotkeys(self):
         """Register or refresh global hotkeys (call after settings change)."""
@@ -309,14 +311,40 @@ class AppWindow(ctk.CTk):
         self.after(1, self._hide_panel)
 
     def _hide_panel(self):
-        self._destroy_panel_backdrop()
-        if self._panel:
-            try:
-                self._panel.attributes("-alpha", 1.0)
-            except Exception:
-                pass
-            self._panel.withdraw()
-        self._panel_visible = False
+        if not self._panel or getattr(self, "_panel_animating", False):
+            return
+        self._panel_animating = True
+        
+        sw = self.winfo_screenwidth()
+        sh = self.winfo_screenheight()
+        target_x = self._panel_x()
+        is_left = config.get("panel_side") == "left"
+        offscreen_x = -_PANEL_W if is_left else sw
+        
+        steps = 12
+        step_ms = 12
+        
+        def animate_out(step):
+            if step > steps:
+                self._destroy_panel_backdrop()
+                self._panel.withdraw()
+                self._panel_visible = False
+                self._panel_animating = False
+                return
+                
+            progress = step / steps
+            current_x = int(target_x + (offscreen_x - target_x) * progress)
+            self._panel.geometry(f"{_PANEL_W}x{sh}+{current_x}+0")
+            
+            if self._panel_backdrop:
+                try:
+                    self._panel_backdrop.attributes("-alpha", 0.14 * (1 - progress))
+                except Exception:
+                    pass
+                    
+            self.after(step_ms, lambda: animate_out(step + 1))
+            
+        animate_out(1)
 
     def close_panel(self):
         self._hide_panel()
@@ -326,11 +354,12 @@ class AppWindow(ctk.CTk):
         self.after(0, self._toggle_panel_main)
 
     def _toggle_panel_main(self):
-        if not self._panel:
+        if not self._panel or getattr(self, "_panel_animating", False):
             return
         if self._panel_visible:
             self._hide_panel()
             return
+        self._panel_animating = True
         import tkinter as tk
 
         sw = self.winfo_screenwidth()
@@ -339,19 +368,22 @@ class AppWindow(ctk.CTk):
         bd = tk.Toplevel(self)
         bd.overrideredirect(True)
         bd.configure(bg=theme.BACKDROP)
-        bd.attributes("-alpha", 0.14)
+        bd.attributes("-alpha", 0.0)
         bd.attributes("-topmost", True)
         bd.bind("<Button-1>", self._close_panel_from_outside)
         self._panel_backdrop = bd
 
-        x = self._panel_x()
-        if config.get("panel_side") == "left":
+        target_x = self._panel_x()
+        is_left = config.get("panel_side") == "left"
+        offscreen_x = -_PANEL_W if is_left else sw
+
+        if is_left:
             bd_w, bd_x = sw - _PANEL_W, _PANEL_W
         else:
             bd_w, bd_x = sw - _PANEL_W, 0
         bd.geometry(f"{bd_w}x{sh}+{bd_x}+0")
 
-        self._panel.geometry(f"{_PANEL_W}x{sh}+{x}+0")
+        self._panel.geometry(f"{_PANEL_W}x{sh}+{offscreen_x}+0")
         self._panel.update_idletasks()
         self._panel.deiconify()
         _hide_from_taskbar(self._panel)
@@ -368,6 +400,34 @@ class AppWindow(ctk.CTk):
             bd.attributes("-topmost", False)
         self._panel.focus_force()
         self._panel_visible = True
+
+        steps = 12
+        step_ms = 12
+        
+        def animate_in(step):
+            if step > steps:
+                self._panel.geometry(f"{_PANEL_W}x{sh}+{target_x}+0")
+                if self._panel_backdrop:
+                    try:
+                        self._panel_backdrop.attributes("-alpha", 0.14)
+                    except Exception:
+                        pass
+                self._panel_animating = False
+                return
+                
+            progress = 1 - (1 - step/steps)**4
+            current_x = int(offscreen_x + (target_x - offscreen_x) * progress)
+            self._panel.geometry(f"{_PANEL_W}x{sh}+{current_x}+0")
+            
+            if self._panel_backdrop:
+                try:
+                    self._panel_backdrop.attributes("-alpha", 0.14 * progress)
+                except Exception:
+                    pass
+                    
+            self.after(step_ms, lambda: animate_in(step + 1))
+            
+        animate_in(1)
 
     def _btray(self):
         ph = str(config.get("panel_hotkey")).upper()

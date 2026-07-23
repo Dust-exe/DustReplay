@@ -33,15 +33,24 @@ class GifMakerDialog(ctk.CTkToplevel):
         try:
             ff = config.resolve_ffmpeg_exe()
             if not ff: return 0.0
-            d = os.path.dirname(ff)
-            prob = os.path.join(d, "ffprobe.exe")
-            if not os.path.isfile(prob): return 0.0
                 
             r = subprocess.run([
-                prob, "-v", "error", "-show_entries", "format=duration", 
-                "-of", "default=noprint_wrappers=1:nokey=1", self.video_path
+                ff, "-i", self.video_path
             ], capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
-            return float(r.stdout.strip())
+            
+            import re
+            match = re.search(r"Duration:\s*(\d+):(\d+):(\d+\.\d+)", r.stderr)
+            if match:
+                h, m, s = match.groups()
+                return float(h)*3600 + float(m)*60 + float(s)
+                
+            for line in r.stderr.splitlines():
+                if "Duration:" in line:
+                    parts = line.split("Duration:")[1].split(",")[0].strip()
+                    h, m, s = parts.split(":")
+                    return float(h)*3600 + float(m)*60 + float(s)
+                    
+            return 0.0
         except Exception as e:
             logger.error("Failed to get duration: %s", e)
             return 0.0
