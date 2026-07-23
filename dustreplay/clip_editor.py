@@ -186,16 +186,15 @@ class ClipEditor(ctk.CTkToplevel):
         self.progress.start()
         self.lbl_status.configure(text=i18n.t("clip_trimming"), text_color=theme.TEXT_SOFT)
         
-        threading.Thread(target=self._trim_worker, daemon=True).start()
+        mode = self.seg_mode.get()
+        threading.Thread(target=self._trim_worker, args=(mode,), daemon=True).start()
 
-    def _trim_worker(self):
+    def _trim_worker(self, mode):
         try:
             ff = config.resolve_ffmpeg_exe()
             d, f = os.path.split(self.video_path)
             n, e = os.path.splitext(f)
             out_path = os.path.join(d, f"{n}_trimmed{e}")
-            
-            mode = self.seg_mode.get()
             
             cmd = [ff, "-y", "-ss", str(self.start_val), "-to", str(self.end_val), "-i", self.video_path]
             

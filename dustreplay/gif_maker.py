@@ -4,7 +4,6 @@ import subprocess
 import threading
 from datetime import timedelta
 import customtkinter as ctk
-from PIL import Image
 
 import config
 import i18n
@@ -170,21 +169,23 @@ class GifMakerDialog(ctk.CTkToplevel):
         self.progress.start()
         self.lbl_status.configure(text=i18n.t("gif_creating"), text_color=theme.TEXT_SOFT)
         
-        threading.Thread(target=self._create_worker, daemon=True).start()
+        fps = self.seg_fps.get()
+        height = self.seg_res.get().replace("p", "")
 
-    def _create_worker(self):
+        threading.Thread(target=self._create_worker, args=(fps, height), daemon=True).start()
+
+    def _create_worker(self, fps, height):
         try:
             ff = config.resolve_ffmpeg_exe()
             od = os.path.join(config.get("output_dir"), "gifs")
             os.makedirs(od, exist_ok=True)
+            os.makedirs(config.TEMP_DIR, exist_ok=True)
             
             f = os.path.basename(self.video_path)
             n, _ = os.path.splitext(f)
             out_path = os.path.join(od, f"{n}.gif")
             pal_path = os.path.join(config.TEMP_DIR, f"pal_{n}.png")
             
-            fps = self.seg_fps.get()
-            height = self.seg_res.get().replace("p", "")
             if height == "480": width = 854
             elif height == "360": width = 640
             else: width = 426
