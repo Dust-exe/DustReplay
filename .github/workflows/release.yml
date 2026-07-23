@@ -58,6 +58,9 @@ jobs:
             "--hidden-import", "thumb_cache",
             "--hidden-import", "main_window",
             "--hidden-import", "branding_paths",
+            "--hidden-import", "clip_editor",
+            "--hidden-import", "gif_maker",
+            "--hidden-import", "pynvml",
             "--add-data", "branding;branding"
           )
           if (Test-Path "icon.ico") {
