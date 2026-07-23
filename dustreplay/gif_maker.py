@@ -221,52 +221,51 @@ class GifMakerDialog(ctk.CTkToplevel):
     def _create_worker(self, fps, height, start_v, end_v):
         try:
             ff = config.resolve_ffmpeg_exe()
+            if not ff:
+                raise Exception("ffmpeg executable not found.")
+
             od = os.path.join(config.get("output_dir"), "gifs")
             os.makedirs(od, exist_ok=True)
-            
-            # Use os.makedirs BEFORE palettegen
-            os.makedirs(config.TEMP_DIR, exist_ok=True)
             
             f = os.path.basename(self.video_path)
             n, _ = os.path.splitext(f)
             out_path = os.path.join(od, f"{n}.gif")
             
-            # Unique palette path to avoid special char issues or concurrency
-            pal_path = os.path.join(config.TEMP_DIR, f"pal_{hash(self.video_path) & 0xFFFFFF:06x}.png")
-            
             if height == "480": width = 854
             elif height == "360": width = 640
             else: width = 426
             
-            dur = end_v - start_v
+            dur = max(0.5, end_v - start_v)
             
-            cmd1 = [
-                ff, "-y", "-i", self.video_path, "-ss", str(start_v), "-t", str(dur),
-                "-vf", f"fps={fps},scale={width}:-1:flags=lanczos,palettegen=stats_mode=diff",
-                pal_path
-            ]
-            r1 = subprocess.run(cmd1, capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
-            
-            if not os.path.isfile(pal_path):
-                err_msg = r1.stderr[-200:] if r1.stderr else "Palettegen failed silently."
-                raise Exception(err_msg)
-                
-            cmd2 = [
-                ff, "-y", "-i", self.video_path, "-ss", str(start_v), "-t", str(dur),
-                "-i", pal_path,
-                "-lavfi", f"fps={fps},scale={width}:-1:flags=lanczos[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=5",
+            # Single-pass high quality palettegen + paletteuse filtergraph
+            cmd = [
+                ff, "-y",
+                "-ss", f"{start_v:.2f}",
+                "-t", f"{dur:.2f}",
+                "-i", self.video_path,
+                "-filter_complex", f"[0:v]fps={fps},scale={width}:-1:flags=lanczos,split[s0][s1];[s0]palettegen=stats_mode=diff[p];[s1][p]paletteuse=dither=bayer:bayer_scale=5",
                 out_path
             ]
-            r2 = subprocess.run(cmd2, capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
             
-            if os.path.exists(pal_path):
-                os.remove(pal_path)
-                
-            if r2.returncode == 0:
-                self.after(0, self._on_success, out_path)
-            else:
-                err = r2.stderr[-200:] if r2.stderr else "Unknown error"
-                self.after(0, self._on_error, err)
+            r = subprocess.run(cmd, capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
+            
+            # Fallback single-pass if complex filter failed
+            if r.returncode != 0 or not os.path.isfile(out_path) or os.path.getsize(out_path) == 0:
+                logger.warning("Single-pass complex GIF filter failed, trying fallback. Stderr: %s", r.stderr)
+                cmd_fb = [
+                    ff, "-y",
+                    "-ss", f"{start_v:.2f}",
+                    "-t", f"{dur:.2f}",
+                    "-i", self.video_path,
+                    "-vf", f"fps={fps},scale={width}:-1:flags=lanczos",
+                    out_path
+                ]
+                r_fb = subprocess.run(cmd_fb, capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
+                if r_fb.returncode != 0 or not os.path.isfile(out_path) or os.path.getsize(out_path) == 0:
+                    err_msg = r_fb.stderr[-250:] if r_fb.stderr else (r.stderr[-250:] if r.stderr else "GIF encoding failed")
+                    raise Exception(err_msg)
+            
+            self.after(0, self._on_success, out_path)
         except Exception as e:
             self.after(0, self._on_error, str(e))
 

@@ -133,10 +133,32 @@ def list_wasapi_audio(ffmpeg_path):
     return result
 
 
+def _list_powershell_audio():
+    """Fallback audio device enumeration via Windows CIM/WMI."""
+    try:
+        r = _run([
+            "powershell", "-NoProfile", "-Command",
+            "Get-CimInstance Win32_SoundDevice | Where-Object Status -eq 'OK' | Select-Object -ExpandProperty Name"
+        ], timeout=6)
+        if r and r.stdout:
+            lines = [line.strip() for line in _decode(r.stdout).splitlines() if line.strip()]
+            return lines
+    except Exception as e:
+        logger.debug("PowerShell audio list failed: %s", e)
+    return []
+
+
 def list_all_audio(ffmpeg_path):
     """Returns (mic_items, sys_items) for UI dropdowns."""
     dshow = list_dshow_audio(ffmpeg_path)
     wasapi = list_wasapi_audio(ffmpeg_path)
+    ps_devs = _list_powershell_audio()
+
+    # Merge PowerShell detected devices if dshow/wasapi miss any
+    for pd in ps_devs:
+        if pd not in dshow and pd not in wasapi:
+            dshow.append(pd)
+
     mic_items = [LABEL_NO_MIC, LABEL_WIN_MIC] + dshow
     dshow_extras = [d for d in dshow if d not in wasapi]
     sys_items = [LABEL_NO_SYS, LABEL_WIN_SYS] + wasapi + dshow_extras
