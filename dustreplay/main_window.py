@@ -261,11 +261,20 @@ def _load_logo_ctk(size: int = 22) -> ctk.CTkImage | None:
     if not lp:
         return None
     try:
-        pil = Image.open(lp).convert("RGBA")
-        pil.thumbnail((size, size), Image.Resampling.LANCZOS)
+        from _mkicon import make_square_logo
+        pil = make_square_logo(size)
         return ctk.CTkImage(light_image=pil, dark_image=pil, size=(size, size))
     except Exception:
-        return None
+        try:
+            pil = Image.open(lp).convert("RGBA")
+            pil.thumbnail((size, size), Image.Resampling.LANCZOS)
+            canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+            x = (size - pil.width) // 2
+            y = (size - pil.height) // 2
+            canvas.paste(pil, (x, y), pil)
+            return ctk.CTkImage(light_image=canvas, dark_image=canvas, size=(size, size))
+        except Exception:
+            return None
 
 
 class MainWindow(ctk.CTkToplevel):

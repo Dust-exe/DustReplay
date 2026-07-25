@@ -54,18 +54,23 @@ def _ti(rec):
     sz = 64
     bg = (20, 16, 24, 255)
     img = Image.new("RGBA", (sz, sz), bg)
-    path = branding_paths.logo_png_path()
-    if os.path.isfile(path):
-        src = Image.open(path).convert("RGBA")
-        margin = 4
-        inner = sz - 2 * margin
-        src.thumbnail((inner, inner), Image.Resampling.LANCZOS)
-        x = margin + (inner - src.width) // 2
-        y = margin + (inner - src.height) // 2
-        img.paste(src, (x, y), src)
-    else:
-        d0 = ImageDraw.Draw(img)
-        d0.ellipse([2, 2, sz - 2, sz - 2], fill=(49, 10, 93, 230))
+    try:
+        from _mkicon import make_square_logo
+        logo = make_square_logo(sz - 8)
+        x = (sz - logo.width) // 2
+        y = (sz - logo.height) // 2
+        img.paste(logo, (x, y), logo)
+    except Exception:
+        path = branding_paths.logo_png_path()
+        if os.path.isfile(path):
+            src = Image.open(path).convert("RGBA")
+            src.thumbnail((sz - 8, sz - 8), Image.Resampling.LANCZOS)
+            x = (sz - src.width) // 2
+            y = (sz - src.height) // 2
+            img.paste(src, (x, y), src)
+        else:
+            d0 = ImageDraw.Draw(img)
+            d0.ellipse([2, 2, sz - 2, sz - 2], fill=(49, 10, 93, 230))
     d = ImageDraw.Draw(img)
     if rec:
         d.ellipse([sz - 20, sz - 20, sz - 4, sz - 4], fill=(196, 68, 68, 255))
@@ -178,9 +183,8 @@ class AppWindow(ctk.CTk):
         try:
             lp = branding_paths.logo_png_path()
             if os.path.isfile(lp):
-                pil = Image.open(lp).convert("RGBA").resize(
-                    (34, 34), Image.Resampling.LANCZOS
-                )
+                from _mkicon import make_square_logo
+                pil = make_square_logo(34)
                 self._hdr_logo_img = ctk.CTkImage(
                     light_image=pil, dark_image=pil, size=(34, 34)
                 )
@@ -549,16 +553,33 @@ class AppWindow(ctk.CTk):
             t.attributes("-alpha", 0.0)
             t.configure(bg=theme.TOAST_BG)
             pad_x, pad_y = 18, 10
+
+            toast_frame = tk.Frame(t, bg=theme.TOAST_BG)
+            toast_frame.pack(padx=4, pady=4)
+
+            # Try to add logo
+            self._toast_photo = None
+            try:
+                from _mkicon import make_square_logo
+                pil_logo = make_square_logo(20)
+                from PIL import ImageTk
+                self._toast_photo = ImageTk.PhotoImage(pil_logo)
+                tk.Label(
+                    toast_frame, image=self._toast_photo, bg=theme.TOAST_BG
+                ).pack(side="left", padx=(pad_x, 6), pady=pad_y)
+            except Exception:
+                pass
+
             lbl = tk.Label(
-                t,
+                toast_frame,
                 text=msg,
                 fg=color,
                 bg=theme.TOAST_BG,
                 font=("Segoe UI", 12, "bold"),
-                padx=pad_x,
+                padx=pad_x if not self._toast_photo else 4,
                 pady=pad_y,
             )
-            lbl.pack()
+            lbl.pack(side="left")
             t.update_idletasks()
             w = t.winfo_reqwidth()
             h = t.winfo_reqheight()

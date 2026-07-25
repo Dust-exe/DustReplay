@@ -81,6 +81,52 @@ def _find_dshow_sys_audio(ff, exclude_mic=""):
     return None
 
 
+_wasapi_loopback_ok: bool | None = None  # cached probe result
+
+
+def _ffmpeg_supports_wasapi_loopback(ff: str) -> bool:
+    """Probe whether this ffmpeg build supports -f wasapi -loopback 1.
+    
+    Many BtbN/gpl builds do NOT compile with wasapi input support, causing
+    'Unrecognized option loopback' which kills ffmpeg instantly.
+    Result is cached for the process lifetime.
+    """
+    global _wasapi_loopback_ok
+    if _wasapi_loopback_ok is not None:
+        return _wasapi_loopback_ok
+    try:
+        r = subprocess.run(
+            [ff, "-f", "wasapi", "-loopback", "1", "-i", "default",
+             "-t", "0.01", "-f", "null", "-"],
+            capture_output=True,
+            timeout=8,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+        )
+        stderr_text = r.stderr.decode("utf-8", errors="replace").lower()
+        if "unrecognized option" in stderr_text or "option not found" in stderr_text:
+            logger.warning("FFmpeg does NOT support wasapi loopback (-loopback unrecognized)")
+            _wasapi_loopback_ok = False
+        elif "wasapi" in stderr_text and ("cannot" in stderr_text or "no such" in stderr_text):
+            # wasapi recognized but can't open — still means the option IS supported
+            _wasapi_loopback_ok = True
+            logger.info("FFmpeg supports wasapi loopback (device open may vary)")
+        elif r.returncode == 0:
+            _wasapi_loopback_ok = True
+            logger.info("FFmpeg wasapi loopback probe OK")
+        else:
+            # Check if it got past option parsing (error is about device, not about option)
+            if "unrecognized" not in stderr_text and "option not found" not in stderr_text:
+                _wasapi_loopback_ok = True
+                logger.info("FFmpeg wasapi loopback probe: option recognized (device error expected)")
+            else:
+                _wasapi_loopback_ok = False
+                logger.warning("FFmpeg wasapi loopback probe failed: %s", stderr_text[-200:])
+    except Exception as e:
+        logger.warning("FFmpeg wasapi loopback probe exception: %s", e)
+        _wasapi_loopback_ok = False
+    return _wasapi_loopback_ok
+
+
 def _capture_scale_filter(max_h_override: int | None = None) -> str:
     """Even dimensions for yuv420p; max height caps pixels (less RAM/CPU for ffmpeg)."""
     if max_h_override is not None:
@@ -239,17 +285,29 @@ def _build_cmd(ff, single_output_path=None):
         )
         logger.info("Microphone audio: dshow '%s'", mic)
 
-    # System audio (loopback) setup - WASAPI default loopback works 100% reliably on Windows
+    # System audio (loopback) setup
+    # First check if this FFmpeg build supports wasapi loopback
     if sys_dev == WASAPI_OUT or not sys_dev or sys_dev.lower().startswith("[windows"):
-        audio_in.append(
-            [
-                "-thread_queue_size", "2048",
-                "-f", "wasapi",
-                "-loopback", "1",
-                "-i", "default",
-            ]
-        )
-        logger.info("System audio: WASAPI default loopback (-i default)")
+        if _ffmpeg_supports_wasapi_loopback(ff):
+            audio_in.append(
+                [
+                    "-thread_queue_size", "2048",
+                    "-f", "wasapi",
+                    "-loopback", "1",
+                    "-i", "default",
+                ]
+            )
+            logger.info("System audio: WASAPI default loopback (-i default)")
+        else:
+            # Fallback: try dshow Stereo Mix or similar loopback device
+            _dshow_sys = _find_dshow_sys_audio(ff, exclude_mic=mic)
+            if _dshow_sys:
+                audio_in.append(
+                    ["-thread_queue_size", "2048", "-f", "dshow", "-i", f"audio={_dshow_sys}"]
+                )
+                logger.info("System audio fallback: dshow '%s'", _dshow_sys)
+            else:
+                logger.warning("No system audio capture available (wasapi unsupported, no dshow loopback found)")
     elif sys_dev and sys_dev != "(No system audio)":
         audio_in.append(
             ["-thread_queue_size", "4096", "-f", "dshow", "-i", f"audio={sys_dev}"]
