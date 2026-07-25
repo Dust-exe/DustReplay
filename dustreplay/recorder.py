@@ -81,50 +81,48 @@ def _find_dshow_sys_audio(ff, exclude_mic=""):
     return None
 
 
-_wasapi_loopback_ok: bool | None = None  # cached probe result
+def get_monitor_geometry(monitor_index: int = 1) -> tuple[int, int, int, int]:
+    """Return (offset_x, offset_y, width, height) for specified monitor (1-based index)."""
+    import ctypes
 
+    class RECT(ctypes.Structure):
+        _fields_ = [("left", ctypes.c_long), ("top", ctypes.c_long),
+                    ("right", ctypes.c_long), ("bottom", ctypes.c_long)]
 
-def _ffmpeg_supports_wasapi_loopback(ff: str) -> bool:
-    """Probe whether this ffmpeg build supports -f wasapi -loopback 1.
-    
-    Many BtbN/gpl builds do NOT compile with wasapi input support, causing
-    'Unrecognized option loopback' which kills ffmpeg instantly.
-    Result is cached for the process lifetime.
-    """
-    global _wasapi_loopback_ok
-    if _wasapi_loopback_ok is not None:
-        return _wasapi_loopback_ok
+    class MONITORINFOEXW(ctypes.Structure):
+        _fields_ = [
+            ("cbSize", ctypes.c_ulong),
+            ("rcMonitor", RECT),
+            ("rcWork", RECT),
+            ("dwFlags", ctypes.c_ulong),
+            ("szDevice", ctypes.c_wchar * 32)
+        ]
+
+    monitors = []
+
+    def callback(hMonitor, hdcMonitor, lprcMonitor, dwData):
+        mi = MONITORINFOEXW()
+        mi.cbSize = ctypes.sizeof(MONITORINFOEXW)
+        if ctypes.windll.user32.GetMonitorInfoW(hMonitor, ctypes.byref(mi)):
+            rc = mi.rcMonitor
+            w = rc.right - rc.left
+            h = rc.bottom - rc.top
+            monitors.append((rc.left, rc.top, w, h))
+        return True
+
     try:
-        r = subprocess.run(
-            [ff, "-f", "wasapi", "-loopback", "1", "-i", "default",
-             "-t", "0.01", "-f", "null", "-"],
-            capture_output=True,
-            timeout=8,
-            creationflags=subprocess.CREATE_NO_WINDOW,
+        MON_ENUM_PROC = ctypes.WINFUNCTYPE(
+            ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(RECT), ctypes.c_size_t
         )
-        stderr_text = r.stderr.decode("utf-8", errors="replace").lower()
-        if "unrecognized option" in stderr_text or "option not found" in stderr_text:
-            logger.warning("FFmpeg does NOT support wasapi loopback (-loopback unrecognized)")
-            _wasapi_loopback_ok = False
-        elif "wasapi" in stderr_text and ("cannot" in stderr_text or "no such" in stderr_text):
-            # wasapi recognized but can't open — still means the option IS supported
-            _wasapi_loopback_ok = True
-            logger.info("FFmpeg supports wasapi loopback (device open may vary)")
-        elif r.returncode == 0:
-            _wasapi_loopback_ok = True
-            logger.info("FFmpeg wasapi loopback probe OK")
-        else:
-            # Check if it got past option parsing (error is about device, not about option)
-            if "unrecognized" not in stderr_text and "option not found" not in stderr_text:
-                _wasapi_loopback_ok = True
-                logger.info("FFmpeg wasapi loopback probe: option recognized (device error expected)")
-            else:
-                _wasapi_loopback_ok = False
-                logger.warning("FFmpeg wasapi loopback probe failed: %s", stderr_text[-200:])
+        ctypes.windll.user32.EnumDisplayMonitors(None, None, MON_ENUM_PROC(callback), 0)
     except Exception as e:
-        logger.warning("FFmpeg wasapi loopback probe exception: %s", e)
-        _wasapi_loopback_ok = False
-    return _wasapi_loopback_ok
+        logger.warning("Monitor enumeration error: %s", e)
+
+    if not monitors:
+        return (0, 0, 1920, 1080)
+
+    idx = max(0, min(monitor_index - 1, len(monitors) - 1))
+    return monitors[idx]
 
 
 def _capture_scale_filter(max_h_override: int | None = None) -> str:
@@ -311,8 +309,19 @@ def _build_cmd(ff, single_output_path=None):
 
     if backend == "gdigrab":
         logger.info("Capture backend: gdigrab (device input)")
-        # gdigrab is an input device: -f gdigrab -framerate <fps> -draw_mouse <mouse> -i desktop
-        cmd += ["-f", "gdigrab", "-framerate", fps, "-draw_mouse", str(draw_mouse), "-i", "desktop"]
+        off_x, off_y, mon_w, mon_h = get_monitor_geometry(mon_idx)
+        logger.info("gdigrab monitor #%s bounds: %sx%s+%s+%s", mon_idx, mon_w, mon_h, off_x, off_y)
+
+        # gdigrab single monitor bounds: -offset_x <x> -offset_y <y> -video_size <w>x<h> -i desktop
+        cmd += [
+            "-f", "gdigrab",
+            "-framerate", fps,
+            "-draw_mouse", str(draw_mouse),
+            "-offset_x", str(off_x),
+            "-offset_y", str(off_y),
+            "-video_size", f"{mon_w}x{mon_h}",
+            "-i", "desktop",
+        ]
 
         # Audio inputs come AFTER video input 0
         for ai in audio_in:
@@ -699,11 +708,9 @@ class Recorder:
         return None
 
     def enable_safe_fallback(self):
-        """Switch backend/audio to safe mode when FFmpeg repeatedly crashes."""
+        """Switch backend to gdigrab when ddagrab repeatedly crashes."""
         logger.warning("Enabling safe capture fallback mode (gdigrab)")
         config.set("capture_backend", "gdigrab")
-        config.set("sys_audio_device", "")
-        config.set("mic_device", "")
         config.save()
 
     def get_closed_segments_for_export(self, minutes=None):
