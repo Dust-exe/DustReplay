@@ -215,8 +215,10 @@ class RecordingsPage(ctk.CTkFrame):
     def _open_folder(self):
         if self.app and hasattr(self.app, "close_panel"):
             self.app.close_panel()
-        os.makedirs(config.get("output_dir"), exist_ok=True)
-        subprocess.Popen(["explorer", config.get("output_dir")])
+        od = os.path.abspath(os.path.normpath(config.get("output_dir")))
+        os.makedirs(od, exist_ok=True)
+        if os.path.exists(od):
+            subprocess.Popen(["explorer", od])
 
     def _play_file(self, fp):
         if self.app and hasattr(self.app, "close_panel"):

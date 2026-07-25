@@ -239,9 +239,10 @@ class _GalleryPage(ctk.CTkFrame):
 
     def _open_folder(self):
         import subprocess
-        od = config.get("output_dir")
+        od = os.path.abspath(os.path.normpath(config.get("output_dir")))
         os.makedirs(od, exist_ok=True)
-        subprocess.Popen(["explorer", od])
+        if os.path.exists(od):
+            subprocess.Popen(["explorer", od])
 
 
 def _resolve_logo_path() -> str | None:

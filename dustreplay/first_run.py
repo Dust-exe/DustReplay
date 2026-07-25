@@ -102,7 +102,7 @@ class _DL:
             self._set("Extracting…", 0.88)
             with zipfile.ZipFile(zt, "r") as z:
                 for m in z.namelist():
-                    if m.endswith("ffmpeg.exe"):
+                    if os.path.basename(m).lower() == "ffmpeg.exe":
                         with z.open(m) as src, open(FFMPEG_EXE, "wb") as dst:
                             dst.write(src.read())
                         break
