@@ -241,15 +241,6 @@ def _build_cmd(ff, single_output_path=None):
         _mh or "native",
         _flip or "none",
     )
-    if backend == "gdigrab":
-        dda_src = f"gdigrab=framerate={fps}:draw_mouse={draw_mouse}:desktop=1,format=bgra"
-        logger.info("Capture backend: gdigrab")
-    else:
-        # Pass fps to ddagrab — capture at target rate, not full monitor refresh.
-        dda_src = (
-            f"ddagrab=output_idx={dda_idx}:draw_mouse={draw_mouse}:"
-            f"framerate={fps},hwdownload,format=bgra"
-        )
 
     from audio_devices import WASAPI_IN, WASAPI_OUT
 
@@ -286,7 +277,6 @@ def _build_cmd(ff, single_output_path=None):
         logger.info("Microphone audio: dshow '%s'", mic)
 
     # System audio (loopback) setup
-    # First check if this FFmpeg build supports wasapi loopback
     if sys_dev == WASAPI_OUT or not sys_dev or sys_dev.lower().startswith("[windows"):
         if _ffmpeg_supports_wasapi_loopback(ff):
             audio_in.append(
@@ -299,7 +289,6 @@ def _build_cmd(ff, single_output_path=None):
             )
             logger.info("System audio: WASAPI default loopback (-i default)")
         else:
-            # Fallback: try dshow Stereo Mix or similar loopback device
             _dshow_sys = _find_dshow_sys_audio(ff, exclude_mic=mic)
             if _dshow_sys:
                 audio_in.append(
@@ -315,68 +304,97 @@ def _build_cmd(ff, single_output_path=None):
         logger.info("System audio: dshow '%s'", sys_dev)
 
     cmd = [ff, "-y"]
-    for ai in audio_in:
-        cmd += ai
 
-    n = len(audio_in)
     _scale = _capture_scale_filter(max_h_i)
     _flipx = _capture_flip_suffix()
-    if backend == "gdigrab":
-        vconv = f"{dda_src},fps={fps},{_scale}{_flipx},format=yuv420p[vout]"
-    else:
-        vconv = f"{dda_src},{_scale}{_flipx},format=yuv420p[vout]"
     _abr = _audio_br()
 
-    if n == 2:
-        fc = (
-            f"{vconv};"
-            f"[0:a]aresample=48000[a0];[1:a]aresample=48000[a1];"
-            f"[a0][a1]amix=inputs=2:duration=longest[aout]"
-        )
-        cmd += [
-            "-filter_complex",
-            fc,
-            "-map",
-            "[vout]",
-            "-map",
-            "[aout]",
-            *venc,
-            "-c:a",
-            "aac",
-            "-b:a",
-            _abr,
-        ]
-    elif n == 1:
-        fc = f"{vconv};" f"[0:a]aresample=48000[aout]"
-        cmd += [
-            "-filter_complex",
-            fc,
-            "-map",
-            "[vout]",
-            "-map",
-            "[aout]",
-            *venc,
-            "-c:a",
-            "aac",
-            "-b:a",
-            _abr,
-        ]
+    if backend == "gdigrab":
+        logger.info("Capture backend: gdigrab (device input)")
+        # gdigrab is an input device: -f gdigrab -framerate <fps> -draw_mouse <mouse> -i desktop
+        cmd += ["-f", "gdigrab", "-framerate", fps, "-draw_mouse", str(draw_mouse), "-i", "desktop"]
+
+        # Audio inputs come AFTER video input 0
+        for ai in audio_in:
+            cmd += ai
+
+        vconv = f"[0:v]fps={fps},{_scale}{_flipx},format=yuv420p[vout]"
+
+        num_aud = len(audio_in)
+        if num_aud == 2:
+            fc = (
+                f"{vconv};"
+                f"[1:a]aresample=48000[a0];[2:a]aresample=48000[a1];"
+                f"[a0][a1]amix=inputs=2:duration=longest[aout]"
+            )
+            cmd += [
+                "-filter_complex", fc,
+                "-map", "[vout]",
+                "-map", "[aout]",
+                *venc,
+                "-c:a", "aac",
+                "-b:a", _abr,
+            ]
+        elif num_aud == 1:
+            fc = f"{vconv};[1:a]aresample=48000[aout]"
+            cmd += [
+                "-filter_complex", fc,
+                "-map", "[vout]",
+                "-map", "[aout]",
+                *venc,
+                "-c:a", "aac",
+                "-b:a", _abr,
+            ]
+        else:
+            fc = vconv
+            cmd += ["-filter_complex", fc, "-map", "[vout]", *venc]
+
     else:
-        fc = vconv
-        cmd += ["-filter_complex", fc, "-map", "[vout]", *venc]
+        logger.info("Capture backend: ddagrab (lavfi filter)")
+        # ddagrab is a lavfi filter module, audio inputs are inputs 0, 1...
+        for ai in audio_in:
+            cmd += ai
+
+        dda_src = f"ddagrab=output_idx={dda_idx}:draw_mouse={draw_mouse}:framerate={fps},hwdownload,format=bgra"
+        vconv = f"{dda_src},{_scale}{_flipx},format=yuv420p[vout]"
+
+        num_aud = len(audio_in)
+        if num_aud == 2:
+            fc = (
+                f"{vconv};"
+                f"[0:a]aresample=48000[a0];[1:a]aresample=48000[a1];"
+                f"[a0][a1]amix=inputs=2:duration=longest[aout]"
+            )
+            cmd += [
+                "-filter_complex", fc,
+                "-map", "[vout]",
+                "-map", "[aout]",
+                *venc,
+                "-c:a", "aac",
+                "-b:a", _abr,
+            ]
+        elif num_aud == 1:
+            fc = f"{vconv};[0:a]aresample=48000[aout]"
+            cmd += [
+                "-filter_complex", fc,
+                "-map", "[vout]",
+                "-map", "[aout]",
+                *venc,
+                "-c:a", "aac",
+                "-b:a", _abr,
+            ]
+        else:
+            fc = vconv
+            cmd += ["-filter_complex", fc, "-map", "[vout]", *venc]
 
     if single_output_path:
         cmd += ["-movflags", "+faststart", single_output_path]
     else:
         cmd += [
-            "-f",
-            "segment",
-            "-segment_time",
-            str(config.get("segment_seconds")),
-            "-segment_format_options",
-            "flush_packets=1",
-            "-strftime",
-            "1",
+            "-f", "segment",
+            "-segment_time", str(config.get("segment_seconds")),
+            "-segment_format_options", "flush_packets=1",
+            "-strftime", "1",
             pat,
         ]
     return cmd
