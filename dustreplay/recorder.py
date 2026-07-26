@@ -125,6 +125,34 @@ def get_monitor_geometry(monitor_index: int = 1) -> tuple[int, int, int, int]:
     return monitors[idx]
 
 
+_wasapi_loopback_ok: bool | None = None
+
+
+def _ffmpeg_supports_wasapi_loopback(ff: str) -> bool:
+    """Probe whether this ffmpeg build supports WASAPI input demuxer (-f wasapi -i default)."""
+    global _wasapi_loopback_ok
+    if _wasapi_loopback_ok is not None:
+        return _wasapi_loopback_ok
+    try:
+        r = subprocess.run(
+            [ff, "-f", "wasapi", "-i", "default", "-t", "0.01", "-f", "null", "-"],
+            capture_output=True,
+            timeout=8,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+        )
+        stderr_text = r.stderr.decode("utf-8", errors="replace").lower()
+        if "unknown input format: 'wasapi'" in stderr_text or "unrecognized option" in stderr_text:
+            logger.warning("FFmpeg build does not support wasapi demuxer")
+            _wasapi_loopback_ok = False
+        else:
+            _wasapi_loopback_ok = True
+            logger.info("FFmpeg build supports wasapi demuxer")
+    except Exception as e:
+        logger.warning("FFmpeg wasapi probe exception: %s", e)
+        _wasapi_loopback_ok = False
+    return _wasapi_loopback_ok
+
+
 def _capture_scale_filter(max_h_override: int | None = None) -> str:
     """Even dimensions for yuv420p; max height caps pixels (less RAM/CPU for ffmpeg)."""
     if max_h_override is not None:
@@ -255,33 +283,46 @@ def _build_cmd(ff, single_output_path=None):
     audio_in = []
 
     # Microphone capture setup
+    dshow_devs = []
+    try:
+        from audio_devices import list_dshow_audio
+        dshow_devs = list_dshow_audio(ff)
+    except Exception as _e:
+        logger.warning("Could not list dshow audio devices: %s", _e)
+
     if mic == WASAPI_IN or (mic and mic.lower().startswith("[windows")):
-        try:
-            from audio_devices import list_dshow_audio
-            _devs = list_dshow_audio(ff)
-            if _devs:
-                audio_in.append(
-                    ["-thread_queue_size", "2048", "-f", "dshow", "-i", f"audio={_devs[0]}"]
-                )
-                logger.info("Microphone audio: dshow '%s'", _devs[0])
-            else:
-                logger.warning("No microphone device found via dshow")
-        except Exception as _e:
-            logger.warning("Could not list microphones: %s", _e)
+        if dshow_devs:
+            audio_in.append(
+                ["-thread_queue_size", "2048", "-f", "dshow", "-i", f"audio={dshow_devs[0]}"]
+            )
+            logger.info("Microphone audio: dshow default '%s'", dshow_devs[0])
+        else:
+            logger.warning("No microphone device found via dshow")
     elif mic and mic != "(No microphone)":
-        audio_in.append(
-            ["-thread_queue_size", "4096", "-f", "dshow", "-i", f"audio={mic}"]
-        )
-        logger.info("Microphone audio: dshow '%s'", mic)
+        # Only pass to dshow if it's a valid dshow input device
+        matched_mic = next((d for d in dshow_devs if mic.lower() in d.lower() or d.lower() in mic.lower()), None)
+        if matched_mic:
+            audio_in.append(
+                ["-thread_queue_size", "2048", "-f", "dshow", "-i", f"audio={matched_mic}"]
+            )
+            logger.info("Microphone audio: dshow '%s'", matched_mic)
+        elif dshow_devs:
+            # Fallback to first available microphone
+            audio_in.append(
+                ["-thread_queue_size", "2048", "-f", "dshow", "-i", f"audio={dshow_devs[0]}"]
+            )
+            logger.info("Microphone audio fallback: dshow '%s'", dshow_devs[0])
+        else:
+            logger.warning("Configured mic '%s' not found in dshow input list, skipping mic to prevent crash", mic)
 
     # System audio (loopback) setup
-    if sys_dev == WASAPI_OUT or not sys_dev or sys_dev.lower().startswith("[windows"):
+    # Playback devices (Kulaklıklar/Speakers) CANNOT be captured via dshow directly; WASAPI loopback must be used.
+    if sys_dev == WASAPI_OUT or not sys_dev or sys_dev.lower().startswith("[windows") or any(kw in sys_dev.lower() for kw in ["kulaklık", "headphone", "speaker", "hoparlör", "realtek", "blackshark", "audio", "out"]):
         if _ffmpeg_supports_wasapi_loopback(ff):
             audio_in.append(
                 [
                     "-thread_queue_size", "2048",
                     "-f", "wasapi",
-                    "-loopback", "1",
                     "-i", "default",
                 ]
             )
@@ -296,10 +337,14 @@ def _build_cmd(ff, single_output_path=None):
             else:
                 logger.warning("No system audio capture available (wasapi unsupported, no dshow loopback found)")
     elif sys_dev and sys_dev != "(No system audio)":
-        audio_in.append(
-            ["-thread_queue_size", "4096", "-f", "dshow", "-i", f"audio={sys_dev}"]
-        )
-        logger.info("System audio: dshow '%s'", sys_dev)
+        matched_sys = next((d for d in dshow_devs if sys_dev.lower() in d.lower() or d.lower() in sys_dev.lower()), None)
+        if matched_sys:
+            audio_in.append(
+                ["-thread_queue_size", "2048", "-f", "dshow", "-i", f"audio={matched_sys}"]
+            )
+            logger.info("System audio: dshow '%s'", matched_sys)
+        else:
+            logger.warning("Configured system audio '%s' not found in dshow input list, skipping", sys_dev)
 
     cmd = [ff, "-y"]
 
