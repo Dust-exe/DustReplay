@@ -129,24 +129,24 @@ _wasapi_loopback_ok: bool | None = None
 
 
 def _ffmpeg_supports_wasapi_loopback(ff: str) -> bool:
-    """Probe whether this ffmpeg build supports WASAPI input demuxer (-f wasapi -i default)."""
+    """Probe whether this ffmpeg build supports WASAPI input demuxer via -devices."""
     global _wasapi_loopback_ok
     if _wasapi_loopback_ok is not None:
         return _wasapi_loopback_ok
     try:
         r = subprocess.run(
-            [ff, "-f", "wasapi", "-i", "default", "-t", "0.01", "-f", "null", "-"],
+            [ff, "-devices"],
             capture_output=True,
-            timeout=8,
+            timeout=5,
             creationflags=subprocess.CREATE_NO_WINDOW,
         )
-        stderr_text = r.stderr.decode("utf-8", errors="replace").lower()
-        if "unknown input format: 'wasapi'" in stderr_text or "unrecognized option" in stderr_text:
-            logger.warning("FFmpeg build does not support wasapi demuxer")
-            _wasapi_loopback_ok = False
-        else:
+        text = r.stderr.decode("utf-8", errors="replace").lower() + r.stdout.decode("utf-8", errors="replace").lower()
+        if "wasapi" in text:
             _wasapi_loopback_ok = True
-            logger.info("FFmpeg build supports wasapi demuxer")
+            logger.info("FFmpeg binary supports WASAPI demuxer")
+        else:
+            _wasapi_loopback_ok = False
+            logger.info("FFmpeg binary does NOT support WASAPI demuxer")
     except Exception as e:
         logger.warning("FFmpeg wasapi probe exception: %s", e)
         _wasapi_loopback_ok = False
@@ -337,12 +337,12 @@ def _build_cmd(ff, single_output_path=None):
                     ["-thread_queue_size", "2048", "-f", "dshow", "-i", f"audio={_dshow_sys}"]
                 )
                 logger.info("System audio fallback: dshow '%s'", _dshow_sys)
-            elif dshow_devs and not audio_in:
-                # If no mic was added yet, try first available dshow audio input as system audio
+            elif dshow_devs:
+                dev_to_use = dshow_devs[1] if len(dshow_devs) > 1 else dshow_devs[0]
                 audio_in.append(
-                    ["-thread_queue_size", "2048", "-f", "dshow", "-i", f"audio={dshow_devs[0]}"]
+                    ["-thread_queue_size", "2048", "-f", "dshow", "-i", f"audio={dev_to_use}"]
                 )
-                logger.info("System audio dshow fallback: '%s'", dshow_devs[0])
+                logger.info("System audio dshow fallback: '%s'", dev_to_use)
     elif sys_dev and sys_dev != "(No system audio)":
         matched_sys = next((d for d in dshow_devs if sys_dev.lower() in d.lower() or d.lower() in sys_dev.lower()), None)
         if matched_sys:
@@ -361,17 +361,11 @@ def _build_cmd(ff, single_output_path=None):
 
     if backend == "gdigrab":
         logger.info("Capture backend: gdigrab (device input)")
-        off_x, off_y, mon_w, mon_h = get_monitor_geometry(mon_idx)
-        logger.info("gdigrab monitor #%s bounds: %sx%s+%s+%s", mon_idx, mon_w, mon_h, off_x, off_y)
-
-        # gdigrab single monitor bounds: -offset_x <x> -offset_y <y> -video_size <w>x<h> -i desktop
+        # gdigrab desktop capture at full smooth framerate
         cmd += [
             "-f", "gdigrab",
             "-framerate", fps,
             "-draw_mouse", str(draw_mouse),
-            "-offset_x", str(off_x),
-            "-offset_y", str(off_y),
-            "-video_size", f"{mon_w}x{mon_h}",
             "-i", "desktop",
         ]
 
