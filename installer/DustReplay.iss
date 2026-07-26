@@ -1,5 +1,5 @@
 #define MyAppName "DustReplay"
-#define MyAppVersion "3.8.2"
+#define MyAppVersion "3.8.3"
 #define MyAppPublisher "DustReplay"
 #define MyAppURL "https://github.com/Dust-exe/dustreplay"
 #define MyAppExeName "DustReplay.exe"
@@ -39,7 +39,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "..\dist\DustReplay\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "..\bundle\ffmpeg\ffmpeg.exe"; DestDir: "{app}\ffmpeg"; Flags: ignoreversion
+Source: "..\bundle\ffmpeg\ffmpeg.exe"; DestDir: "{app}\ffmpeg"; Flags: ignoreversion restartreplace uninsrestartdelete
 Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "..\LEGAL.md"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 
@@ -49,9 +49,13 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 
 [Code]
 procedure CurStepChanged(CurStep: TSetupStep);
+var
+  ResultCode: Integer;
 begin
   if CurStep = ssInstall then
   begin
+    Exec('taskkill.exe', '/F /IM ffmpeg.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    Exec('taskkill.exe', '/F /IM DustReplay.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
     if DirExists(ExpandConstant('{app}')) then
     begin
       DelTree(ExpandConstant('{app}\ffmpeg'), True, True, True);

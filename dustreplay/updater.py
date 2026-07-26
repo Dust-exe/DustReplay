@@ -144,11 +144,21 @@ class UpdateDialog(ctk.CTkToplevel):
 
             self.after(0, lambda: self._update_progress(1.0, "Kurulum başlatılıyor..."))
 
+            # Forcefully kill ffmpeg and any active background recorders so setup files are not locked
+            try:
+                subprocess.run(
+                    ["taskkill", "/F", "/IM", "ffmpeg.exe"],
+                    capture_output=True,
+                    creationflags=subprocess.CREATE_NO_WINDOW,
+                )
+            except Exception:
+                pass
+
             # Execute installer silently and quit current app
             if os.path.isfile(target_setup) and os.path.getsize(target_setup) > 10000:
-                cmd = [target_setup, "/SILENT", "/CLOSEAPPLICATIONS", "/RESTARTAPPLICATIONS"]
+                cmd = [target_setup, "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS"]
                 subprocess.Popen(cmd, creationflags=subprocess.CREATE_NO_WINDOW)
-                self.after(500, lambda: os._exit(0))
+                self.after(600, lambda: os._exit(0))
             else:
                 raise Exception("Downloaded setup file is invalid.")
 
