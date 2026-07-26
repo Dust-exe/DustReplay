@@ -36,7 +36,7 @@ def _decode(data):
 
 
 def list_dshow_audio(ffmpeg_path):
-    """DirectShow audio devices — used for microphone."""
+    """DirectShow audio devices — used for microphone and audio capture."""
     r = _run([ffmpeg_path, "-f", "dshow", "-list_devices", "true", "-i", "dummy"])
     if not r or (not r.stderr and not r.stdout):
         r = _run([ffmpeg_path, "-list_devices", "true", "-f", "dshow", "-i", "dummy"])
@@ -45,51 +45,33 @@ def list_dshow_audio(ffmpeg_path):
     text = _decode(r.stderr) + _decode(r.stdout)
     logger.info("dshow raw output length: %s", len(text))
     devs = []
-    in_audio = False
+    
+    # Direct matching: look for any line with quotes and (audio) marker
     for line in text.splitlines():
-        ll = line.lower()
-        if "audio devices" in ll:
-            in_audio = True
-        elif "video devices" in ll and "audio" not in ll:
-            in_audio = False
-        elif in_audio and '"' in line:
-            if "@device" in ll:
-                continue
+        if '"' in line and ("(audio)" in line.lower() or "audio device" in line.lower()):
             m = re.search(r'"([^"]+)"', line)
             if m:
                 name = m.group(1).strip()
-                if name and name not in devs:
+                if name and name not in devs and not name.startswith("@device"):
                     devs.append(name)
+
+    # General fallback if no (audio) suffix in line
     if not devs:
-        logger.warning("Section-based dshow parsing found nothing, trying fallback 1")
-        in_video = False
+        in_audio = False
         for line in text.splitlines():
             ll = line.lower()
-            if "video device" in ll:
-                in_video = True
-            if "audio device" in ll:
-                in_video = False
-            if not in_video and '"' in line and "@device" not in ll:
-                m = re.search(r'"([^"]{3,64})"', line)
+            if "audio" in ll:
+                in_audio = True
+            elif "video" in ll and "audio" not in ll:
+                in_audio = False
+            if in_audio and '"' in line and "@device" not in ll:
+                m = re.search(r'"([^"]+)"', line)
                 if m:
                     name = m.group(1).strip()
                     if name and name not in devs:
                         devs.append(name)
-    if not devs:
-        logger.warning("Trying error-based dshow listing (fallback 2)")
-        r2 = _run([ffmpeg_path, "-f", "dshow", "-i", "audio=_DustReplay_NoSuchDevice_"])
-        if r2:
-            text2 = _decode(r2.stderr) + _decode(r2.stdout)
-            for line in text2.splitlines():
-                ll = line.lower()
-                if "@device" in ll or "could not find" in ll:
-                    continue
-                m = re.search(r'"([^"]{2,80})"', line)
-                if m:
-                    name = m.group(1).strip()
-                    if name and "(" in name and name not in devs:
-                        devs.append(name)
-    logger.info("dshow audio devices (%s): %s", len(devs), devs)
+
+    logger.info("dshow audio devices parsed (%s): %s", len(devs), devs)
     return devs
 
 
