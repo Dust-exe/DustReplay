@@ -33,7 +33,7 @@ public static class EncodingHelper
     {
         var q = Math.Clamp(quality, 18, 51);
         if (nvenc)
-            return ["-c:v", "h264_nvenc", "-preset", "p1", "-rc", "constqp", "-qp", q.ToString()];
-        return ["-c:v", "libx264", "-preset", "ultrafast", "-crf", q.ToString()];
+            return ["-c:v", "h264_nvenc", "-preset", "p4", "-tune", "hq", "-rc", "vbr", "-cq", q.ToString(), "-b:v", "0"];
+        return ["-c:v", "libx264", "-preset", "superfast", "-crf", q.ToString()];
     }
 }

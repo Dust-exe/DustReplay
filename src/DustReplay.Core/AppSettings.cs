@@ -8,7 +8,7 @@ public sealed class AppSettings
     public int BufferMinutes { get; set; } = 10;
     public int SegmentSeconds { get; set; } = 30;
     public int Fps { get; set; } = 20;
-    public int Quality { get; set; } = 36;
+    public int Quality { get; set; } = 28;
     public int CaptureMaxHeight { get; set; } = 720;
     public int AudioBitrateK { get; set; } = 96;
     public string VideoEncoder { get; set; } = "auto";
@@ -79,6 +79,7 @@ public sealed class AppSettings
 
     private static AppSettings Migrate(AppSettings s)
     {
+        if (s.Quality == 36) s.Quality = 28; // Migrate old default of 36 down to 28 for better quality
         if (s.SegmentSeconds < 15) s.SegmentSeconds = 30;
         if (s.SegmentSeconds > 60) s.SegmentSeconds = 60;
         if (s.Fps > 30) s.Fps = 30;
