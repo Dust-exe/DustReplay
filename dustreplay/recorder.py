@@ -754,9 +754,10 @@ class Recorder:
         return None
 
     def enable_safe_fallback(self):
-        """Switch backend to gdigrab when ddagrab repeatedly crashes."""
-        logger.warning("Enabling safe capture fallback mode (gdigrab)")
-        config.set("capture_backend", "gdigrab")
+        """Safe recovery mode — switch to CPU video encoding while preserving ddagrab DXGI capture."""
+        logger.warning("Enabling safe capture fallback mode (CPU encoder / ddagrab)")
+        config.set("capture_backend", "ddagrab")
+        config.set("video_encoder", "cpu")
         config.save()
 
     def get_closed_segments_for_export(self, minutes=None):

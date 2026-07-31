@@ -131,7 +131,7 @@ def migrate():
             changed = True
     except (TypeError, ValueError):
         pass
-    if "capture_backend" not in _cfg:
+    if _cfg.get("capture_backend") != "ddagrab":
         _cfg["capture_backend"] = "ddagrab"
         changed = True
     if int(_cfg.get("monitor_index") or 1) < 1:
