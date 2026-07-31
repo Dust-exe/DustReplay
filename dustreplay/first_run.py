@@ -7,7 +7,7 @@ import config
 import customtkinter as ctk
 import theme
 
-FFMPEG_URL = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
+FFMPEG_URL = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
 FFMPEG_EXE = os.path.join(config.APPDATA_DIR, "ffmpeg", "ffmpeg.exe")
 
 

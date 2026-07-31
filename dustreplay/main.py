@@ -15,6 +15,7 @@ from app_window import AppWindow
 import config
 from first_run import ensure_ffmpeg
 from recorder import Recorder
+import startup
 from watchdog import Watchdog
 
 logger = logging.getLogger("main")
@@ -22,6 +23,7 @@ logger = logging.getLogger("main")
 
 def main():
     logger.info("%s starting…", config.APP_DISPLAY)
+    startup.clean_update_data()
     ensure_ffmpeg()
     rec = Recorder()
     app = AppWindow(rec, watchdog=None)

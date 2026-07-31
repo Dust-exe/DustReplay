@@ -1,5 +1,5 @@
 #define MyAppName "DustReplay"
-#define MyAppVersion "3.8.5"
+#define MyAppVersion "3.8.6"
 #define MyAppPublisher "DustReplay"
 #define MyAppURL "https://github.com/Dust-exe/dustreplay"
 #define MyAppExeName "DustReplay.exe"
@@ -30,6 +30,10 @@ PrivilegesRequired=admin
 DisableProgramGroupPage=yes
 LicenseFile=..\LICENSE
 UninstallDisplayIcon={app}\{#MyAppExeName}
+
+[InstallDelete]
+Type: filesandordirs; Name: "{userappdata}\DustReplay\temp\*"
+Type: filesandordirs; Name: "{userappdata}\DustReplay\thumbs\*"
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

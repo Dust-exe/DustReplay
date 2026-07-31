@@ -72,8 +72,11 @@ try {
     Write-Host "  [1/5] pip install..." -ForegroundColor Cyan
     & py -3.12 -m pip install -r (Join-Path $root 'requirements.txt') --upgrade
 
-    Write-Host "  [2/5] icon.ico..." -ForegroundColor Cyan
+    Write-Host "  [2/5] icon.ico & wasapi_loopback.exe..." -ForegroundColor Cyan
     if (Test-Path '_mkicon.py') { & py -3.12 _mkicon.py }
+    if (Test-Path 'wasapi_loopback.cs') {
+        & "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /out:wasapi_loopback.exe /target:exe wasapi_loopback.cs
+    }
 
     Write-Host "  [2b/5] ffmpeg bundle (for offline installer)..." -ForegroundColor Cyan
     Pop-Location
@@ -106,7 +109,8 @@ try {
         '--hidden-import', 'i18n',
         '--hidden-import', 'theme',
         '--hidden-import', 'branding_paths',
-        '--add-data', 'branding;branding'
+        '--add-data', 'branding;branding',
+        '--add-binary', 'wasapi_loopback.exe;.'
     )
     $ico = Join-Path $pkg 'icon.ico'
     if (Test-Path $ico) { $pyiArgs += "--icon=$ico" }
