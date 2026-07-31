@@ -14,23 +14,35 @@ public static class FfmpegCommandBuilder
         var flip = CaptureFlipSuffix(s.CaptureFlip);
         var abr = $"{Math.Clamp(s.AudioBitrateK, 64, 320)}k";
 
-        var videoSrc = s.CaptureBackend.Equals("gdigrab", StringComparison.OrdinalIgnoreCase)
-            ? BuildGdigrabSource(fps, ddaIdx)
-            : BuildDdagrabSource(fps, ddaIdx);
+        var isGdigrab = s.CaptureBackend.Equals("gdigrab", StringComparison.OrdinalIgnoreCase);
+
+        var args = new List<string> { "-y" };
+
+        // Video input
+        args.AddRange(["-thread_queue_size", "4096"]);
+        if (isGdigrab)
+        {
+            args.AddRange(["-f", "gdigrab", "-framerate", fps, "-draw_mouse", "1", "-i", "desktop"]);
+        }
+        else
+        {
+            args.AddRange(["-f", "lavfi", "-i", $"ddagrab=output_idx={ddaIdx}:draw_mouse=1:framerate={fps}"]);
+        }
 
         var audioParts = BuildAudioInputs(ffmpeg, s);
         var n = audioParts.Count;
+        foreach (var a in audioParts) args.AddRange(a);
 
-        var vconv = $"{videoSrc},fps={fps},{scale}{flip},format=yuv420p[vout]";
+        var hwdown = isGdigrab ? "" : "hwdownload,format=bgra,";
+        var vconv = $"[0:v]{hwdown}fps={fps},{scale}{flip},format=yuv420p[vout]";
+
         var fc = n switch
         {
-            2 => $"{vconv};[0:a]aresample=48000[a0];[1:a]aresample=48000[a1];[a0][a1]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0[aout]",
-            1 => $"{vconv};[0:a]aresample=48000[aout]",
+            2 => $"{vconv};[1:a]aresample=async=1:osr=48000[a0];[2:a]aresample=async=1:osr=48000[a1];[a0][a1]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0[aout]",
+            1 => $"{vconv};[1:a]aresample=async=1:osr=48000[aout]",
             _ => vconv,
         };
 
-        var args = new List<string> { "-y" };
-        foreach (var a in audioParts) args.AddRange(a);
         args.AddRange(["-filter_complex", fc]);
         if (n >= 1)
         {
@@ -51,15 +63,6 @@ public static class FfmpegCommandBuilder
             pat,
         ]);
         return string.Join(" ", args.Select(EscapeArg));
-    }
-
-    private static string BuildDdagrabSource(string fps, int outputIdx) =>
-        $"ddagrab=output_idx={outputIdx}:draw_mouse=1:framerate={fps},hwdownload,format=bgra";
-
-    private static string BuildGdigrabSource(string fps, int monitorIdx)
-    {
-        // Desktop capture — often more stable in exclusive-fullscreen games than DDA.
-        return $"gdigrab=framerate={fps}:draw_mouse=1:desktop=1,format=bgra";
     }
 
     private static string CaptureScaleFilter(AppSettings s)
