@@ -112,10 +112,10 @@ def use_nvenc(ff_path: str) -> bool:
 def video_encode_args(encoder: str, cq: str) -> list[str]:
     """ffmpeg arguments for H.264 video only (no audio)."""
     if encoder == ENC_NVENC:
-        return ["-c:v", "h264_nvenc", "-preset", "p4", "-rc", "constqp", "-qp", str(cq)]
+        return ["-c:v", "h264_nvenc", "-preset", "p4", "-tune", "ll", "-rc", "constqp", "-qp", str(cq), "-zerolatency", "1"]
     if encoder == ENC_AMF:
         return ["-c:v", "h264_amf", "-usage", "transcoding", "-quality", "balanced", "-rc", "cqp", "-qp", str(cq)]
-    return ["-c:v", "libx264", "-preset", "ultrafast", "-crf", str(cq)]
+    return ["-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-crf", str(cq)]
 
 
 def resolve_buffer_encoder(ff_path: str) -> str:

@@ -722,7 +722,13 @@ class SettingsPage(ctk.CTkFrame):
             saved_sys = config.get("sys_audio_device") or ""
             sys_cur = config_to_label(saved_sys, "sys")
             if sys_cur not in sys_items:
-                sys_cur = sys_items[0]
+                matched = next((item for item in sys_items if sys_cur.lower() in item.lower() or item.lower() in sys_cur.lower()), None)
+                if matched:
+                    sys_cur = matched
+                elif len(sys_items) > 1:
+                    sys_cur = sys_items[1]
+                else:
+                    sys_cur = sys_items[0]
             if self._sys_dd_widget:
                 self._sys_dd_widget.configure(values=sys_items)
                 self._sys_var.set(sys_cur)

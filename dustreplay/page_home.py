@@ -336,19 +336,23 @@ class HomePage(ctk.CTkFrame):
 
     def _build_audio(self):
         mic = config.get("mic_device") or "(none)"
+        mic_active = bool(mic and mic not in ("(none)", "(No microphone)"))
         if "voicemeeter" in mic.lower():
             mic = mic.split("(")[0].strip()
-        mic = (mic[:30] + "\u2026") if len(mic) > 30 else mic
+        mic = (mic[:28] + "\u2026") if len(mic) > 28 else mic
+
         sys_d = config.get("sys_audio_device") or "(none)"
+        sys_active = bool(sys_d and sys_d not in ("(none)", "(No system audio)"))
         if sys_d == "__wasapi_out__":
             sys_d = "Windows default loopback"
         elif "voicemeeter" in sys_d.lower():
             sys_d = sys_d.split("(")[0].strip()
-        sys_d = (sys_d[:30] + "\u2026") if len(sys_d) > 30 else sys_d
-        self._info_row("\U0001f3a7", "Microphone", mic)
-        self._info_row("\U0001f50a", "System audio", sys_d)
+        sys_d = (sys_d[:28] + "\u2026") if len(sys_d) > 28 else sys_d
 
-    def _info_row(self, icon, title, val):
+        self._info_row("\U0001f3a7", "Microphone", mic, active=mic_active)
+        self._info_row("\U0001f50a", "System audio", sys_d, active=sys_active)
+
+    def _info_row(self, icon, title, val, active=True):
         row = ctk.CTkFrame(self, fg_color="transparent", height=48)
         row.pack(fill="x")
         row.pack_propagate(False)
@@ -365,6 +369,11 @@ class HomePage(ctk.CTkFrame):
         ctk.CTkLabel(tf, text=val, font=ctk.CTkFont(size=10), text_color=_GR, anchor="w").pack(
             fill="x"
         )
+        badge_color = theme.STATUS_IDLE if active else theme.TEXT_DIM
+        badge_txt = "ON" if active else "OFF"
+        badge = ctk.CTkFrame(inn, fg_color=theme.CARD_BG, corner_radius=6, border_width=1, border_color=badge_color)
+        badge.pack(side="right", padx=10)
+        ctk.CTkLabel(badge, text=badge_txt, font=ctk.CTkFont(size=9, weight="bold"), text_color=badge_color, padx=6).pack()
 
     def _on_manual_row_click(self):
         self.app.toggle_manual_recording()

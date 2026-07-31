@@ -129,28 +129,28 @@ _wasapi_loopback_ok: bool | None = None
 
 
 def _ffmpeg_supports_wasapi_loopback(ff: str) -> bool:
-    """Probe whether this ffmpeg build supports WASAPI input demuxer via -devices."""
+    """Probe whether this ffmpeg build supports WASAPI input demuxer via -demuxers."""
     global _wasapi_loopback_ok
     if _wasapi_loopback_ok is not None:
         return _wasapi_loopback_ok
     try:
         r = subprocess.run(
-            [ff, "-devices"],
+            [ff, "-demuxers"],
             capture_output=True,
             timeout=5,
             creationflags=subprocess.CREATE_NO_WINDOW,
         )
         text = r.stderr.decode("utf-8", errors="replace").lower() + r.stdout.decode("utf-8", errors="replace").lower()
-        if "wasapi" in text:
-            _wasapi_loopback_ok = True
-            logger.info("FFmpeg binary supports WASAPI demuxer")
-        else:
-            _wasapi_loopback_ok = False
-            logger.info("FFmpeg binary does NOT support WASAPI demuxer")
+        # Look for wasapi as an input demuxer (starts with ' d wasapi' or 'd  wasapi')
+        lines = [line.strip() for line in text.splitlines() if "wasapi" in line]
+        is_demuxer = any(line.startswith("d") or line.startswith("d ") or "wasapi" in line.split() for line in lines)
+        _wasapi_loopback_ok = is_demuxer
+        logger.info("FFmpeg binary WASAPI demuxer support: %s", _wasapi_loopback_ok)
     except Exception as e:
         logger.warning("FFmpeg wasapi probe exception: %s", e)
         _wasapi_loopback_ok = False
     return _wasapi_loopback_ok
+
 
 
 def _capture_scale_filter(max_h_override: int | None = None) -> str:
@@ -320,38 +320,51 @@ def _build_cmd(ff, single_output_path=None):
             logger.warning("Configured mic '%s' not found in dshow input list", mic)
 
     # System audio capture setup
-    if sys_dev == WASAPI_OUT or not sys_dev or sys_dev.lower().startswith("[windows") or any(kw in sys_dev.lower() for kw in ["kulaklık", "headphone", "speaker", "hoparlör", "realtek", "blackshark", "audio", "out"]):
+    added_sys = False
+    if sys_dev and sys_dev not in (WASAPI_OUT, "(No system audio)", ""):
+        matched_sys = next((d for d in dshow_devs if sys_dev.lower() in d.lower() or d.lower() in sys_dev.lower()), None)
+        if not matched_sys:
+            for part in sys_dev.split():
+                if len(part) >= 4 and part.lower() not in ("kulaklıklar", "headphones", "speakers", "hoparlör"):
+                    matched_sys = next((d for d in dshow_devs if part.lower() in d.lower()), None)
+                    if matched_sys:
+                        break
+        if matched_sys:
+            audio_in.append(
+                ["-thread_queue_size", "4096", "-f", "dshow", "-i", f"audio={matched_sys}"]
+            )
+            added_sys = True
+            logger.info("System audio matched user selection: dshow '%s'", matched_sys)
+        else:
+            logger.warning("Configured system audio '%s' not found in dshow input list", sys_dev)
+
+    if not added_sys and sys_dev != "(No system audio)":
         if _ffmpeg_supports_wasapi_loopback(ff):
             audio_in.append(
                 [
-                    "-thread_queue_size", "2048",
+                    "-thread_queue_size", "4096",
                     "-f", "wasapi",
+                    "-loopback", "1",
                     "-i", "default",
                 ]
             )
-            logger.info("System audio: WASAPI default loopback (-i default)")
+            added_sys = True
+            logger.info("System audio: WASAPI default loopback (-f wasapi -loopback 1 -i default)")
         else:
             _dshow_sys = _find_dshow_sys_audio(ff, exclude_mic=mic)
             if _dshow_sys:
                 audio_in.append(
-                    ["-thread_queue_size", "2048", "-f", "dshow", "-i", f"audio={_dshow_sys}"]
+                    ["-thread_queue_size", "4096", "-f", "dshow", "-i", f"audio={_dshow_sys}"]
                 )
+                added_sys = True
                 logger.info("System audio fallback: dshow '%s'", _dshow_sys)
             elif dshow_devs:
-                dev_to_use = dshow_devs[1] if len(dshow_devs) > 1 else dshow_devs[0]
+                dev_to_use = next((d for d in dshow_devs if d != mic), dshow_devs[0])
                 audio_in.append(
-                    ["-thread_queue_size", "2048", "-f", "dshow", "-i", f"audio={dev_to_use}"]
+                    ["-thread_queue_size", "4096", "-f", "dshow", "-i", f"audio={dev_to_use}"]
                 )
+                added_sys = True
                 logger.info("System audio dshow fallback: '%s'", dev_to_use)
-    elif sys_dev and sys_dev != "(No system audio)":
-        matched_sys = next((d for d in dshow_devs if sys_dev.lower() in d.lower() or d.lower() in sys_dev.lower()), None)
-        if matched_sys:
-            audio_in.append(
-                ["-thread_queue_size", "2048", "-f", "dshow", "-i", f"audio={matched_sys}"]
-            )
-            logger.info("System audio: dshow '%s'", matched_sys)
-        else:
-            logger.warning("Configured system audio '%s' not found in dshow input list, skipping", sys_dev)
 
     cmd = [ff, "-y"]
 
@@ -363,9 +376,14 @@ def _build_cmd(ff, single_output_path=None):
         logger.info("Capture backend: gdigrab (device input)")
         # gdigrab desktop capture at full smooth framerate
         cmd += [
+            "-thread_queue_size", "4096",
+            "-probesize", "32M",
+            "-analyzeduration", "0",
             "-f", "gdigrab",
             "-framerate", fps,
             "-draw_mouse", str(draw_mouse),
+            "-offset_x", "0",
+            "-offset_y", "0",
             "-i", "desktop",
         ]
 
@@ -380,7 +398,7 @@ def _build_cmd(ff, single_output_path=None):
             fc = (
                 f"{vconv};"
                 f"[1:a]aresample=48000[a0];[2:a]aresample=48000[a1];"
-                f"[a0][a1]amix=inputs=2:duration=longest[aout]"
+                f"[a0][a1]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0[aout]"
             )
             cmd += [
                 "-filter_complex", fc,
@@ -418,7 +436,7 @@ def _build_cmd(ff, single_output_path=None):
             fc = (
                 f"{vconv};"
                 f"[0:a]aresample=48000[a0];[1:a]aresample=48000[a1];"
-                f"[a0][a1]amix=inputs=2:duration=longest[aout]"
+                f"[a0][a1]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0[aout]"
             )
             cmd += [
                 "-filter_complex", fc,

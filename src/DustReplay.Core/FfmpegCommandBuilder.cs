@@ -24,7 +24,7 @@ public static class FfmpegCommandBuilder
         var vconv = $"{videoSrc},fps={fps},{scale}{flip},format=yuv420p[vout]";
         var fc = n switch
         {
-            2 => $"{vconv};[0:a]aresample=48000[a0];[1:a]aresample=48000[a1];[a0][a1]amix=inputs=2:duration=longest[aout]",
+            2 => $"{vconv};[0:a]aresample=48000[a0];[1:a]aresample=48000[a1];[a0][a1]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0[aout]",
             1 => $"{vconv};[0:a]aresample=48000[aout]",
             _ => vconv,
         };
@@ -85,12 +85,10 @@ public static class FfmpegCommandBuilder
     private static List<string[]> BuildAudioInputs(string ffmpeg, AppSettings s)
     {
         var list = new List<string[]>();
-        // Simplified: WASAPI loopback + optional dshow mic via ffmpeg device list would need probe.
-        // For MVP use same sentinel as Python — full device UI in settings later.
         if (!string.IsNullOrEmpty(s.MicDevice) && s.MicDevice != "__wasapi_in__")
             list.Add(["-thread_queue_size", "4096", "-f", "dshow", "-i", $"audio={s.MicDevice}"]);
         if (s.SysAudioDevice == "__wasapi_out__")
-            list.Add(["-thread_queue_size", "2048", "-f", "wasapi", "-loopback", "-i", "default"]);
+            list.Add(["-thread_queue_size", "4096", "-f", "wasapi", "-loopback", "1", "-i", "default"]);
         else if (!string.IsNullOrEmpty(s.SysAudioDevice))
             list.Add(["-thread_queue_size", "4096", "-f", "dshow", "-i", $"audio={s.SysAudioDevice}"]);
         return list;
