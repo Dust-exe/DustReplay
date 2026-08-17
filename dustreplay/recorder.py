@@ -335,7 +335,7 @@ def _build_cmd(ff, single_output_path=None):
                 )
                 logger.info("System audio input attached: dshow fallback '%s'", matched_sys_name)
 
-    cmd = [ff, "-y"]
+    cmd = [ff, "-y", "-nostdin"]
 
     _scale = _capture_scale_filter(max_h_i)
     _flipx = _capture_flip_suffix()
@@ -621,9 +621,8 @@ class Recorder:
             return
         if self.process.poll() is None:
             try:
-                self.process.stdin.write(b"q\n")
-                self.process.stdin.flush()
-                self.process.wait(timeout=8)
+                self.process.terminate()
+                self.process.wait(timeout=4)
             except Exception:
                 try:
                     self.process.kill()
