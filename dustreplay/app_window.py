@@ -825,6 +825,7 @@ class AppWindow(ctk.CTk):
                 if self.watchdog:
                     self.watchdog.set_paused(True)
                 self.recorder.stop()
+                self.recorder.reset_buffer()
                 self.recorder.start()
                 if self.watchdog:
                     self.watchdog.set_paused(False)

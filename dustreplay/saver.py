@@ -217,14 +217,12 @@ def _worker(recorder, minutes, on_done, on_error, watchdog=None):
                 on_error(f"Merge failed: {err_detail}" if err_detail else "Merge failed.")
             return
 
-        # v4.0: Only remove tail copies, NOT the ring buffer segments.
-        # The cleanup loop in recorder handles ring buffer pruning.
+        # Clean up exported segments so buffer resets fresh for next replay
         for s in valid_segs:
-            if "_tail_export_" in os.path.basename(s):
-                try:
-                    os.remove(s)
-                except Exception as e:
-                    logger.debug("Could not remove tail segment %s: %s", s, e)
+            try:
+                os.remove(s)
+            except Exception as e:
+                logger.debug("Could not remove segment %s: %s", s, e)
 
         if on_done:
             on_done(out)

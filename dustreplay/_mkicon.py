@@ -62,7 +62,34 @@ def make_square_logo(size: int = 256) -> Image.Image:
     return out
 
 
+def compile_wasapi_loopback():
+    """Compile wasapi_loopback.cs to wasapi_loopback.exe if on Windows."""
+    import subprocess
+    import sys
+    cs_path = os.path.join(os.path.dirname(__file__), "wasapi_loopback.cs")
+    exe_path = os.path.join(os.path.dirname(__file__), "wasapi_loopback.exe")
+    if not os.path.isfile(cs_path):
+        return
+    csc_candidates = [
+        r"C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe",
+        r"C:\Windows\Microsoft.NET\Framework\v4.0.30319\csc.exe",
+    ]
+    for csc in csc_candidates:
+        if os.path.isfile(csc):
+            try:
+                subprocess.run(
+                    [csc, "/nologo", f"/out:{exe_path}", "/target:exe", cs_path],
+                    check=True,
+                    capture_output=True,
+                )
+                print(f"Compiled {exe_path} successfully via {csc}")
+                return
+            except Exception as e:
+                print(f"csc compilation error: {e}")
+
+
 if __name__ == "__main__":
+    compile_wasapi_loopback()
     imgs = [_render_icon(s) for s in _SIZES]
     imgs[0].save(
         "icon.ico",

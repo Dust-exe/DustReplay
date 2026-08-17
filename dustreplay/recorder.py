@@ -43,6 +43,24 @@ def get_ffmpeg_path():
     )
 
 
+def resolve_wasapi_exe() -> str | None:
+    """Locate wasapi_loopback.exe across frozen exe, bundle, and dev paths."""
+    import sys
+    candidates = []
+    if getattr(sys, "frozen", False):
+        exe_dir = os.path.dirname(os.path.abspath(sys.executable))
+        candidates.append(os.path.join(exe_dir, "wasapi_loopback.exe"))
+        candidates.append(os.path.join(exe_dir, "_internal", "wasapi_loopback.exe"))
+        if hasattr(sys, "_MEIPASS"):
+            candidates.append(os.path.join(sys._MEIPASS, "wasapi_loopback.exe"))
+    candidates.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "wasapi_loopback.exe"))
+    candidates.append(os.path.join(config.APPDATA_DIR, "wasapi_loopback.exe"))
+    for p in candidates:
+        if p and os.path.isfile(p):
+            return p
+    return None
+
+
 # ── Stale process cleanup ──────────────────────────────────────────────────
 
 def _kill_stale_ffmpeg():
@@ -312,9 +330,9 @@ def _build_cmd(ff, single_output_path=None):
 
     # System audio capture setup (WASAPI loopback via wasapi_loopback.exe pipe)
     added_sys = False
-    wasapi_exe = os.path.join(os.path.dirname(__file__), "wasapi_loopback.exe")
+    wasapi_exe = resolve_wasapi_exe()
     if sys_dev != "(No system audio)":
-        if os.path.isfile(wasapi_exe):
+        if wasapi_exe:
             audio_in.append(
                 ["-thread_queue_size", "8192",
                  "-use_wallclock_as_timestamps", "1",   # v4.0: monotonic clock sync
@@ -577,10 +595,10 @@ class Recorder:
             self._wasapi_proc = None
 
         sys_dev = config.get("sys_audio_device") or ""
-        wasapi_exe = os.path.join(os.path.dirname(__file__), "wasapi_loopback.exe")
+        wasapi_exe = resolve_wasapi_exe()
         stdin_src = subprocess.PIPE
 
-        if sys_dev != "(No system audio)" and os.path.isfile(wasapi_exe):
+        if sys_dev != "(No system audio)" and wasapi_exe:
             try:
                 self._wasapi_proc = subprocess.Popen(
                     [wasapi_exe],

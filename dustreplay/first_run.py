@@ -15,7 +15,41 @@ def ffmpeg_ready():
     return config.resolve_ffmpeg_exe() is not None
 
 
+def ensure_wasapi_loopback():
+    """Compile wasapi_loopback.cs to APPDATA if wasapi_loopback.exe is not already available."""
+    try:
+        import sys
+        import subprocess
+        from recorder import resolve_wasapi_exe
+        if resolve_wasapi_exe():
+            return
+        dst = os.path.join(config.APPDATA_DIR, "wasapi_loopback.exe")
+        cs_candidates = [
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "wasapi_loopback.cs"),
+            os.path.join(config.APPDATA_DIR, "wasapi_loopback.cs"),
+        ]
+        cs_path = next((p for p in cs_candidates if os.path.isfile(p)), None)
+        if not cs_path:
+            return
+        csc_candidates = [
+            r"C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe",
+            r"C:\Windows\Microsoft.NET\Framework\v4.0.30319\csc.exe",
+        ]
+        for csc in csc_candidates:
+            if os.path.isfile(csc):
+                subprocess.run(
+                    [csc, "/nologo", f"/out:{dst}", "/target:exe", cs_path],
+                    capture_output=True,
+                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                )
+                if os.path.isfile(dst):
+                    break
+    except Exception:
+        pass
+
+
 def ensure_ffmpeg():
+    ensure_wasapi_loopback()
     if ffmpeg_ready():
         return
     _DL().run()
