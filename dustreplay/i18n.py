@@ -33,6 +33,7 @@ _MSG = {
         "sec.hardware": "\U0001f4ca  Hardware overlay",
         "sec.startup": "\U0001f680  Startup",
         "disp.capture": "Screen to capture",
+        "disp.all_displays": "All Displays (combined)",
         "disp.flip": "Recording orientation",
         "disp.flip.hint": "Use when the monitor is physically upside down or mirrored so the clip matches what you see. Try “Flip vertically” first for inverted mounts.",
         "flip.none": "None (normal)",
@@ -42,6 +43,8 @@ _MSG = {
         "rec.encoder": "Video encoder",
         "rec.buffer": "Rolling buffer (minutes)",
         "rec.buffer.hint": "Keeps this many minutes in memory; Save writes the same length to a file.",
+        "rec.disk_estimate": "\u26a0 Estimated disk usage: ~{gb} GB",
+        "rec.disk_warning": "High buffer duration may use significant disk space!",
         "rec.fps": "Target FPS",
         "rec.fps.hint": "Higher = smoother but uses more CPU/GPU.",
         "rec.quality": "Video quality",
@@ -199,6 +202,7 @@ _MSG = {
         "sec.hardware": "\U0001f4ca  Donanım paneli",
         "sec.startup": "\U0001f680  Başlangıç",
         "disp.capture": "Yakalanacak ekran",
+        "disp.all_displays": "Tüm Ekranlar (birleşik)",
         "disp.flip": "Kayıt yönü düzeltmesi",
         "disp.flip.hint": "Monitör fiziksel olarak ters veya aynalı montajlıysa kayıt ekrandaki gibi görünsün diye seçin. Ters monitörde çoğunlukla “Dikey çevir” işe yarar.",
         "flip.none": "Yok (normal)",
@@ -208,6 +212,8 @@ _MSG = {
         "rec.encoder": "Video kodlayıcı",
         "rec.buffer": "Yuvarlanan tampon (dakika)",
         "rec.buffer.hint": "Bu kadar dakika bellekte tutulur; Kaydet ile aynı süre dosyaya yazılır.",
+        "rec.disk_estimate": "\u26a0 Tahmini disk kullanımı: ~{gb} GB",
+        "rec.disk_warning": "Yüksek tampon süresi önemli disk alanı kullanabilir!",
         "rec.fps": "Hedef FPS",
         "rec.fps.hint": "Yüksek = daha akıcı, daha çok CPU/GPU kullanır.",
         "rec.quality": "Video kalitesi",
@@ -360,16 +366,12 @@ def encoder_labels():
     return [t("enc.auto"), t("enc.nvenc"), t("enc.amf"), t("enc.cpu")]
 
 
-def buffer_profile_labels():
-    return [t("enc.profile.balanced"), t("enc.profile.low_gpu")]
-
-
-def capture_backend_labels():
-    return [t("rec.backend.ddagrab"), t("rec.backend.gdigrab")]
-
-
-def game_mode_labels():
-    return [t("rec.game_mode.off"), t("rec.game_mode.auto"), t("rec.game_mode.on")]
+def capture_monitors_labels(monitor_names: list[str] | None = None):
+    """Labels for capture_monitors dropdown: All Displays + individual monitors."""
+    items = [t("disp.all_displays")]
+    if monitor_names:
+        items.extend(monitor_names)
+    return items
 
 
 def res_cap_labels():

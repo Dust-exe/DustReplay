@@ -17,9 +17,6 @@ _NONE_MIC = "(No microphone)"
 _NONE_SYS = "(No system audio)"
 
 _ENC_VALUES = ["auto", "nvenc", "amf", "cpu"]
-_PROFILE_VALUES = ["balanced", "low_gpu"]
-_BACKEND_VALUES = ["ddagrab", "gdigrab"]
-_GAME_MODE_VALUES = ["off", "auto", "on"]
 _RES_CAP_VALUES = (0, 1440, 1080, 720)
 _FLIP_VALUES = ("none", "vertical", "horizontal", "rotate180")
 
@@ -104,10 +101,7 @@ class SettingsPage(ctk.CTkFrame):
         self._flip_dd(s)
         self._sec(s, "sec.recording")
         self._encoder_dd(s)
-        self._buffer_profile_dd(s)
-        self._capture_backend_dd(s)
-        self._game_mode_dd(s)
-        self._sld(s, "buffer_minutes", "rec.buffer", 5, 60, "rec.buffer.hint")
+        self._buffer_slider(s)
         self._fps_seg(s)
         self._quality_dd(s)
         self._res_cap_dd(s)
@@ -330,109 +324,6 @@ class SettingsPage(ctk.CTkFrame):
             width=220,
         ).pack(side="right", padx=12, pady=8)
 
-    def _buffer_profile_dd(self, p):
-        labels = i18n.buffer_profile_labels()
-        cur = (config.get("buffer_encoder_profile") or "balanced").lower()
-        try:
-            ix = _PROFILE_VALUES.index(cur)
-        except ValueError:
-            ix = 0
-        r = ctk.CTkFrame(p, fg_color=_PD, corner_radius=8)
-        r.pack(fill="x", padx=8, pady=4)
-        ctk.CTkLabel(
-            r,
-            text=i18n.t("enc.profile"),
-            anchor="w",
-            text_color=theme.TEXT_SOFT,
-            font=ctk.CTkFont(size=12),
-        ).pack(side="left", padx=(12, 0), pady=12)
-        self._profile_var = ctk.StringVar(value=labels[ix])
-        ctk.CTkOptionMenu(
-            r,
-            variable=self._profile_var,
-            values=labels,
-            fg_color=theme.PANEL,
-            button_color=_P,
-            button_hover_color=_PH,
-            dropdown_fg_color=theme.ACCENT_DEEP,
-            width=220,
-        ).pack(side="right", padx=12, pady=8)
-
-    def _capture_backend_dd(self, p):
-        labels = i18n.capture_backend_labels()
-        cur = (config.get("capture_backend") or "ddagrab").lower()
-        try:
-            ix = _BACKEND_VALUES.index(cur)
-        except ValueError:
-            ix = 0
-        r = ctk.CTkFrame(p, fg_color=_PD, corner_radius=8)
-        r.pack(fill="x", padx=8, pady=4)
-        tf = ctk.CTkFrame(r, fg_color="transparent")
-        tf.pack(side="left", fill="both", expand=True, padx=(12, 0), pady=8)
-        ctk.CTkLabel(
-            tf,
-            text=i18n.t("rec.capture_backend"),
-            anchor="w",
-            text_color=theme.TEXT_SOFT,
-            font=ctk.CTkFont(size=12),
-        ).pack(fill="x")
-        ctk.CTkLabel(
-            tf,
-            text=i18n.t("rec.capture_backend.hint"),
-            anchor="w",
-            text_color=theme.TEXT_DIM,
-            font=ctk.CTkFont(size=10),
-            wraplength=280,
-        ).pack(fill="x")
-        self._backend_var = ctk.StringVar(value=labels[ix])
-        ctk.CTkOptionMenu(
-            r,
-            variable=self._backend_var,
-            values=labels,
-            fg_color=theme.PANEL,
-            button_color=_P,
-            button_hover_color=_PH,
-            dropdown_fg_color=theme.ACCENT_DEEP,
-            width=200,
-        ).pack(side="right", padx=12, pady=8)
-
-    def _game_mode_dd(self, p):
-        labels = i18n.game_mode_labels()
-        cur = (config.get("game_mode") or "auto").lower()
-        try:
-            ix = _GAME_MODE_VALUES.index(cur)
-        except ValueError:
-            ix = 1
-        r = ctk.CTkFrame(p, fg_color=_PD, corner_radius=8)
-        r.pack(fill="x", padx=8, pady=4)
-        tf = ctk.CTkFrame(r, fg_color="transparent")
-        tf.pack(side="left", fill="both", expand=True, padx=(12, 0), pady=8)
-        ctk.CTkLabel(
-            tf,
-            text=i18n.t("rec.game_mode"),
-            anchor="w",
-            text_color=theme.TEXT_SOFT,
-            font=ctk.CTkFont(size=12),
-        ).pack(fill="x")
-        ctk.CTkLabel(
-            tf,
-            text=i18n.t("rec.game_mode.hint"),
-            anchor="w",
-            text_color=theme.TEXT_DIM,
-            font=ctk.CTkFont(size=10),
-            wraplength=280,
-        ).pack(fill="x")
-        self._game_mode_var = ctk.StringVar(value=labels[ix])
-        ctk.CTkOptionMenu(
-            r,
-            variable=self._game_mode_var,
-            values=labels,
-            fg_color=theme.PANEL,
-            button_color=_P,
-            button_hover_color=_PH,
-            dropdown_fg_color=theme.ACCENT_DEEP,
-            width=200,
-        ).pack(side="right", padx=12, pady=8)
 
     def _panel_side_dd(self, p):
         labels = i18n.panel_side_labels()
@@ -462,9 +353,15 @@ class SettingsPage(ctk.CTkFrame):
 
     def _monitor_dd(self, p):
         self._mon_items = _get_monitors()
-        cur_n = int(config.get("monitor_index") or 1)
-        cur_n = max(1, min(cur_n, len(self._mon_items)))
-        cur = self._mon_items[cur_n - 1]
+        # Build labels with "All Displays" as first option
+        self._mon_labels = i18n.capture_monitors_labels(self._mon_items)
+        cur_monitors = (config.get("capture_monitors") or "primary").lower()
+        if cur_monitors == "all":
+            cur = self._mon_labels[0]  # "All Displays"
+        else:
+            cur_n = int(config.get("monitor_index") or 1)
+            cur_n = max(1, min(cur_n, len(self._mon_items)))
+            cur = self._mon_items[cur_n - 1]
         r = ctk.CTkFrame(p, fg_color=_PD, corner_radius=8)
         r.pack(fill="x", padx=8, pady=4)
         ctk.CTkLabel(
@@ -478,12 +375,12 @@ class SettingsPage(ctk.CTkFrame):
         ctk.CTkOptionMenu(
             r,
             variable=self._mon_var,
-            values=self._mon_items,
+            values=self._mon_labels,
             fg_color=theme.PANEL,
             button_color=_P,
             button_hover_color=_PH,
             dropdown_fg_color=theme.ACCENT_DEEP,
-            width=220,
+            width=260,
         ).pack(side="right", padx=12, pady=8)
 
     def _res_cap_dd(self, p):
@@ -801,6 +698,107 @@ class SettingsPage(ctk.CTkFrame):
             command=lambda x, lb=lb: lb.configure(text=str(int(float(x)))),
         ).pack(fill="x", padx=12, pady=(0, 12))
 
+    def _estimate_disk_gb(self, minutes: int) -> float:
+        """Rough estimate of ring buffer disk usage in GB."""
+        try:
+            fps = int(config.get("fps") or 60)
+        except (TypeError, ValueError):
+            fps = 60
+        try:
+            cq = int(config.get("quality") or 20)
+        except (TypeError, ValueError):
+            cq = 20
+        try:
+            max_h = int(config.get("capture_max_height") or 0)
+        except (TypeError, ValueError):
+            max_h = 0
+        # Estimate video bitrate from CQ (rough: CQ 18 ≈ 30 Mbps, CQ 30 ≈ 8 Mbps at 1080p60)
+        # Scale linearly with fps ratio and resolution ratio
+        base_mbps = max(2.0, 40.0 - (cq * 1.2))  # crude CQ→Mbps mapping
+        fps_factor = fps / 60.0
+        if max_h > 0 and max_h < 1080:
+            res_factor = (max_h / 1080.0) ** 1.5
+        elif max_h >= 1080:
+            res_factor = 1.0
+        else:
+            res_factor = 1.0  # native (assume 1080p)
+        mbps = base_mbps * fps_factor * res_factor
+        # Audio: ~128 kbps
+        total_mbps = mbps + 0.128
+        gb = (total_mbps * minutes * 60) / 8 / 1024
+        return round(gb, 1)
+
+    def _buffer_slider(self, p):
+        """Buffer minutes slider with live disk space estimation and warning."""
+        k = "buffer_minutes"
+        v = ctk.IntVar(value=int(config.get(k)))
+        self._v[k] = (v, int)
+        r = ctk.CTkFrame(p, fg_color=_PD, corner_radius=8)
+        r.pack(fill="x", padx=8, pady=4)
+        top = ctk.CTkFrame(r, fg_color="transparent")
+        top.pack(fill="x", padx=12, pady=(10, 2))
+        ctk.CTkLabel(
+            top,
+            text=i18n.t("rec.buffer"),
+            anchor="w",
+            text_color=theme.TEXT_SOFT,
+            font=ctk.CTkFont(size=12),
+        ).pack(side="left")
+        lb = ctk.CTkLabel(
+            top,
+            text=str(v.get()),
+            width=40,
+            text_color="white",
+            font=ctk.CTkFont(size=13, weight="bold"),
+        )
+        lb.pack(side="right")
+        ctk.CTkLabel(
+            r,
+            text=i18n.t("rec.buffer.hint"),
+            anchor="w",
+            text_color=theme.VERSION_MUTED,
+            font=ctk.CTkFont(size=10),
+            wraplength=260,
+        ).pack(fill="x", padx=12, pady=(0, 4))
+
+        # Disk space estimation label
+        est_gb = self._estimate_disk_gb(v.get())
+        warn = est_gb >= 3.0
+        est_text = i18n.t("rec.disk_estimate", gb=est_gb)
+        est_color = theme.WARNING if warn else theme.TEXT_DIM
+        self._disk_est_label = ctk.CTkLabel(
+            r,
+            text=est_text,
+            anchor="w",
+            text_color=est_color,
+            font=ctk.CTkFont(size=10),
+            wraplength=280,
+        )
+        self._disk_est_label.pack(fill="x", padx=12, pady=(0, 4))
+
+        def _on_slide(x):
+            mins = int(float(x))
+            lb.configure(text=str(mins))
+            gb = self._estimate_disk_gb(mins)
+            w = gb >= 3.0
+            self._disk_est_label.configure(
+                text=i18n.t("rec.disk_estimate", gb=gb),
+                text_color=theme.WARNING if w else theme.TEXT_DIM,
+            )
+
+        ctk.CTkSlider(
+            r,
+            variable=v,
+            from_=5,
+            to=60,
+            number_of_steps=55,
+            button_color=_P,
+            button_hover_color=_PH,
+            progress_color=_P,
+            height=16,
+            command=_on_slide,
+        ).pack(fill="x", padx=12, pady=(0, 12))
+
     def _tgl(self, p, k, label_key):
         v = ctk.BooleanVar(value=bool(config.get(k)))
         self._v[k] = (v, bool)
@@ -893,12 +891,22 @@ class SettingsPage(ctk.CTkFrame):
                 self._sl.configure(text=i18n.t("su.on"), text_color=theme.GREEN)
 
     def _save(self):
+        # ── Monitor / Capture Monitors ──
         mon_sel = self._mon_var.get()
-        if mon_sel in self._mon_items:
+        all_displays_label = self._mon_labels[0] if self._mon_labels else ""
+        if mon_sel == all_displays_label:
+            config.set("capture_monitors", "all")
+            config.set("capture_backend", "gdigrab")
+            config.set("monitor_index", 1)
+        elif mon_sel in self._mon_items:
             mon_idx = self._mon_items.index(mon_sel) + 1
+            config.set("capture_monitors", "primary")
+            config.set("capture_backend", "ddagrab")
+            config.set("monitor_index", mon_idx)
         else:
-            mon_idx = 1
-        config.set("monitor_index", mon_idx)
+            config.set("capture_monitors", "primary")
+            config.set("capture_backend", "ddagrab")
+            config.set("monitor_index", 1)
 
         try:
             flabels = i18n.flip_labels()
@@ -921,26 +929,6 @@ class SettingsPage(ctk.CTkFrame):
         except ValueError:
             config.set("video_encoder", "auto")
 
-        try:
-            plabels = i18n.buffer_profile_labels()
-            pi = plabels.index(self._profile_var.get())
-            config.set("buffer_encoder_profile", _PROFILE_VALUES[pi])
-        except (ValueError, AttributeError):
-            config.set("buffer_encoder_profile", "balanced")
-
-        try:
-            blabels = i18n.capture_backend_labels()
-            bi = blabels.index(self._backend_var.get())
-            config.set("capture_backend", _BACKEND_VALUES[bi])
-        except (ValueError, AttributeError):
-            config.set("capture_backend", "ddagrab")
-
-        try:
-            glabels = i18n.game_mode_labels()
-            gi = glabels.index(self._game_mode_var.get())
-            config.set("game_mode", _GAME_MODE_VALUES[gi])
-        except (ValueError, AttributeError):
-            config.set("game_mode", "auto")
 
         from audio_devices import label_to_config
 

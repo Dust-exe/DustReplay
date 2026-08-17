@@ -1,3 +1,5 @@
+"""v4.0 watchdog — restarts ffmpeg if it dies, safe fallback after repeated crashes."""
+
 import logging
 import threading
 import time

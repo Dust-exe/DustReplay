@@ -1,4 +1,7 @@
-"""Video encoder selection (NVENC / AMF / CPU) for ffmpeg pipelines."""
+"""Video encoder selection (NVENC / AMF / CPU) for ffmpeg pipelines.
+
+v4.0 — ShadowPlay-tier NVENC settings, unified encoder resolve.
+"""
 
 import logging
 import subprocess
@@ -97,6 +100,7 @@ def resolve_encoder(ff_path: str, force_redetect=False) -> str:
         return ENC_NVENC if has_nvenc else ENC_CPU
     if mode in ("amf", "amd", "h264_amf"):
         return ENC_AMF if has_amf else ENC_CPU
+    # auto
     if has_nvenc:
         return ENC_NVENC
     if has_amf:
@@ -109,18 +113,38 @@ def use_nvenc(ff_path: str) -> bool:
     return resolve_encoder(ff_path) == ENC_NVENC
 
 
-def video_encode_args(encoder: str, cq: str) -> list[str]:
-    """ffmpeg arguments for H.264 video only (no audio)."""
+def video_encode_args(encoder: str, cq: str, fps: int = 60) -> list[str]:
+    """ffmpeg arguments for H.264 video only (no audio).
+
+    ShadowPlay-tier NVENC settings for near-zero GPU overhead.
+    """
     if encoder == ENC_NVENC:
-        return ["-c:v", "h264_nvenc", "-preset", "p4", "-tune", "ll", "-rc", "constqp", "-qp", str(cq), "-zerolatency", "1"]
+        return [
+            "-c:v", "h264_nvenc",
+            "-preset", "p1",            # fastest hardware preset
+            "-tune", "ull",             # ultra-low-latency
+            "-rc", "constqp",
+            "-qp", str(cq),
+            "-b:v", "0",               # pure QP mode, no CBR
+            "-zerolatency", "1",
+            "-spatial-aq", "0",         # AQ off → less GPU overhead
+            "-temporal-aq", "0",
+            "-forced-idr", "1",         # clean IDR keyframes
+            "-g", str(fps * 2),         # GOP = 2 seconds
+        ]
     if encoder == ENC_AMF:
-        return ["-c:v", "h264_amf", "-usage", "transcoding", "-quality", "balanced", "-rc", "cqp", "-qp", str(cq)]
-    return ["-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-crf", str(cq)]
-
-
-def resolve_buffer_encoder(ff_path: str) -> str:
-    """Encoder for rolling buffer: low_gpu profile forces CPU H.264."""
-    profile = (config.get("buffer_encoder_profile") or "balanced").lower().strip()
-    if profile == "low_gpu":
-        return ENC_CPU
-    return resolve_encoder(ff_path)
+        return [
+            "-c:v", "h264_amf",
+            "-usage", "ultralowlatency",
+            "-quality", "speed",
+            "-rc", "cqp",
+            "-qp", str(cq),
+            "-g", str(fps * 2),
+        ]
+    return [
+        "-c:v", "libx264",
+        "-preset", "ultrafast",
+        "-tune", "zerolatency",
+        "-crf", str(cq),
+        "-g", str(fps * 2),
+    ]

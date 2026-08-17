@@ -14,16 +14,14 @@ _CFG_FILE = os.path.join(APPDATA_DIR, "settings.json")
 
 _DEFAULTS = {
     "buffer_minutes": 10,
-    "segment_seconds": 10,
     "capture_backend": "ddagrab",
-    "game_mode": "auto",
     "fps": 60,
     "quality": 20,
     "capture_max_height": 0,
     "audio_bitrate_k": 96,
     "video_encoder": "auto",
-    "buffer_encoder_profile": "balanced",
     "monitor_index": 1,
+    "capture_monitors": "primary",      # "primary" | "all" | monitor index
     "capture_flip": "none",
     "mic_device": "",
     "sys_audio_device": "__wasapi_out__",
@@ -35,7 +33,6 @@ _DEFAULTS = {
     "watchdog_interval": 2,
     "max_crash_count": 10,
     "crash_restart_delay": 3,
-    "segment_cleanup_grace": 90,
     "overlay_enabled": True,
     "overlay_corner": "tr",
     "overlay_x": 20,
@@ -110,8 +107,26 @@ def resolve_ffmpeg_exe():
 
 
 def migrate():
-    """Normalize legacy settings from older single-file builds."""
+    """Normalize legacy settings from older builds.
+
+    v4.0: removed segment_seconds, segment_cleanup_grace, game_mode,
+    buffer_encoder_profile; added capture_monitors.
+    """
     changed = False
+
+    # ── Remove legacy keys ──
+    _legacy_keys = (
+        "segment_seconds",
+        "segment_cleanup_grace",
+        "game_mode",
+        "buffer_encoder_profile",
+    )
+    for key in _legacy_keys:
+        if key in _cfg:
+            del _cfg[key]
+            changed = True
+
+    # ── Audio sentinel migration ──
     for key in ("mic_device", "sys_audio_device"):
         v = _cfg.get(key, "")
         if v and v.startswith("__") and v.endswith("__"):
@@ -124,40 +139,24 @@ def migrate():
     if not _cfg.get("sys_audio_device"):
         _cfg["sys_audio_device"] = "__wasapi_out__"
         changed = True
-    try:
-        seg = int(_cfg.get("segment_seconds") or 15)
-        if seg < 10:
-            _cfg["segment_seconds"] = 10
+
+    # ── Force ddagrab for single-monitor ──
+    cap_mon = _cfg.get("capture_monitors", "primary")
+    if cap_mon == "all":
+        # gdigrab is required for all-displays mode
+        if _cfg.get("capture_backend") != "gdigrab":
+            _cfg["capture_backend"] = "gdigrab"
             changed = True
-    except (TypeError, ValueError):
-        pass
-    if _cfg.get("capture_backend") != "ddagrab":
-        _cfg["capture_backend"] = "ddagrab"
-        changed = True
+    else:
+        if _cfg.get("capture_backend") != "ddagrab":
+            _cfg["capture_backend"] = "ddagrab"
+            changed = True
+
     if int(_cfg.get("monitor_index") or 1) < 1:
         _cfg["monitor_index"] = 1
         changed = True
-    try:
-        pass
-    except (TypeError, ValueError):
-        pass
     if "video_encoder" not in _cfg:
         _cfg["video_encoder"] = "auto"
-        changed = True
-    if "buffer_encoder_profile" not in _cfg:
-        _cfg["buffer_encoder_profile"] = "balanced"
-        changed = True
-    if "game_mode" not in _cfg:
-        _cfg["game_mode"] = "auto"
-        changed = True
-    if "stats_overlay_corner" not in _cfg:
-        _cfg["stats_overlay_corner"] = "br"
-        changed = True
-    if "stats_show_fps" not in _cfg:
-        _cfg["stats_show_fps"] = True
-        changed = True
-    if "stats_overlay_mode" not in _cfg:
-        _cfg["stats_overlay_mode"] = "normal"
         changed = True
     _allowed_flip = frozenset(("none", "vertical", "horizontal", "rotate180"))
     if (_cfg.get("capture_flip") or "none") not in _allowed_flip:
@@ -167,6 +166,7 @@ def migrate():
     if (_cfg.get("overlay_corner") or "tr") not in _allowed_oc:
         _cfg["overlay_corner"] = "tr"
         changed = True
+
     # ── Upgrade old low-quality defaults to high-quality defaults ──
     try:
         _q = int(_cfg.get("quality") or 20)
@@ -189,6 +189,17 @@ def migrate():
             changed = True
     except (TypeError, ValueError):
         pass
+
+    if "stats_overlay_corner" not in _cfg:
+        _cfg["stats_overlay_corner"] = "br"
+        changed = True
+    if "stats_show_fps" not in _cfg:
+        _cfg["stats_show_fps"] = True
+        changed = True
+    if "stats_overlay_mode" not in _cfg:
+        _cfg["stats_overlay_mode"] = "normal"
+        changed = True
+
     if changed:
         try:
             save()
