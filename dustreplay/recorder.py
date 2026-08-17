@@ -423,23 +423,25 @@ def _build_cmd(ff, single_output_path=None):
             fc = (
                 f"{vconv};"
                 f"[1:a]aresample=48000:async=1:first_pts=0[a0];[2:a]aresample=48000:async=1:first_pts=0[a1];"
-                f"[a0][a1]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0[aout]"
+                f"[a0][a1]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0,volume=2.5[aout]"
             )
             cmd += [
                 "-filter_complex", fc,
                 "-map", "[vout]", "-map", "[aout]",
+                "-r", fps,
                 *venc, "-c:a", "aac", "-b:a", _abr,
             ]
         elif num_aud == 1:
-            fc = f"{vconv};[1:a]aresample=48000:async=1:first_pts=0[aout]"
+            fc = f"{vconv};[1:a]aresample=48000:async=1:first_pts=0,volume=2.5[aout]"
             cmd += [
                 "-filter_complex", fc,
                 "-map", "[vout]", "-map", "[aout]",
+                "-r", fps,
                 *venc, "-c:a", "aac", "-b:a", _abr,
             ]
         else:
             fc = vconv
-            cmd += ["-filter_complex", fc, "-map", "[vout]", *venc]
+            cmd += ["-filter_complex", fc, "-map", "[vout]", "-r", fps, *venc]
 
     else:
         logger.info("Capture backend: ddagrab (lavfi GPU capture)")
@@ -454,23 +456,25 @@ def _build_cmd(ff, single_output_path=None):
             fc = (
                 f"{vconv};"
                 f"[0:a]aresample=48000:async=1:first_pts=0[a0];[1:a]aresample=48000:async=1:first_pts=0[a1];"
-                f"[a0][a1]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0[aout]"
+                f"[a0][a1]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0,volume=2.5[aout]"
             )
             cmd += [
                 "-filter_complex", fc,
                 "-map", "[vout]", "-map", "[aout]",
+                "-r", fps,
                 *venc, "-c:a", "aac", "-b:a", _abr,
             ]
         elif num_aud == 1:
-            fc = f"{vconv};[0:a]aresample=48000:async=1:first_pts=0[aout]"
+            fc = f"{vconv};[0:a]aresample=48000:async=1:first_pts=0,volume=2.5[aout]"
             cmd += [
                 "-filter_complex", fc,
                 "-map", "[vout]", "-map", "[aout]",
+                "-r", fps,
                 *venc, "-c:a", "aac", "-b:a", _abr,
             ]
         else:
             fc = vconv
-            cmd += ["-filter_complex", fc, "-map", "[vout]", *venc]
+            cmd += ["-filter_complex", fc, "-map", "[vout]", "-r", fps, *venc]
 
     if single_output_path:
         cmd += ["-movflags", "+faststart", single_output_path]
@@ -599,6 +603,7 @@ class Recorder:
 
     def _launch(self):
         _kill_stale_ffmpeg()
+        self.reset_buffer()
         if hasattr(self, "_wasapi_proc") and self._wasapi_proc:
             try:
                 self._wasapi_proc.kill()

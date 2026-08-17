@@ -169,25 +169,38 @@ def migrate():
 
     # ── Upgrade old low-quality defaults to high-quality defaults ──
     try:
-        _q = int(_cfg.get("quality") or 20)
-        if _q >= 30:
-            _cfg["quality"] = 20
+        _q = int(_cfg.get("quality") or 18)
+        if _q >= 25:
+            _cfg["quality"] = 18
             changed = True
     except (TypeError, ValueError):
-        pass
-    try:
-        _mh = int(_cfg.get("capture_max_height") or 0)
-        if _mh == 540:
-            _cfg["capture_max_height"] = 0
-            changed = True
-    except (TypeError, ValueError):
-        pass
+        _cfg["quality"] = 18
+        changed = True
+
     try:
         _fps = int(_cfg.get("fps") or 60)
-        if _fps <= 20:
+        if _fps < 60:
             _cfg["fps"] = 60
             changed = True
     except (TypeError, ValueError):
+        _cfg["fps"] = 60
+        changed = True
+
+    # Clear stale cached encoders on update
+    if "cached_encoders" in _cfg:
+        del _cfg["cached_encoders"]
+        changed = True
+
+    # Clean legacy temp directory segments
+    try:
+        if os.path.isdir(TEMP_DIR):
+            for tf in os.listdir(TEMP_DIR):
+                if tf.startswith("seg_") or tf.startswith("_tail_"):
+                    try:
+                        os.remove(os.path.join(TEMP_DIR, tf))
+                    except Exception:
+                        pass
+    except Exception:
         pass
 
     if "stats_overlay_corner" not in _cfg:
