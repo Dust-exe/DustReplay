@@ -210,6 +210,7 @@ class _GalleryPage(ctk.CTkFrame):
             btns,
             text=i18n.t("rec.play"),
             height=28,
+            width=54,
             fg_color=theme.BTN_DARK,
             hover_color=theme.ACCENT_HOVER,
             border_width=1,
@@ -219,15 +220,30 @@ class _GalleryPage(ctk.CTkFrame):
         ).pack(side="left", padx=(0, 4))
         ctk.CTkButton(
             btns,
+            text="🔍 " + i18n.t("rec.analyze"),
+            height=28,
+            fg_color=theme.BTN_DARK,
+            hover_color=theme.ACCENT_HOVER,
+            border_width=1,
+            border_color=_P,
+            corner_radius=8,
+            command=lambda f=fp: self._open_analysis(f),
+        ).pack(side="left", padx=(0, 4))
+        ctk.CTkButton(
+            btns,
             text=i18n.t("rec.delete"),
             height=28,
-            width=60,
+            width=50,
             fg_color=theme.RED,
             hover_color="#8a3030",
             corner_radius=8,
             command=lambda: self._delete(fp),
         ).pack(side="right")
         return card
+
+    def _open_analysis(self, fp: str):
+        from clip_analyzer import ClipAnalysisModal
+        ClipAnalysisModal(self, fp)
 
     def _delete(self, fp: str):
         try:

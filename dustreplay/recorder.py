@@ -410,7 +410,7 @@ def _build_cmd(ff, single_output_path=None):
         if num_aud == 2:
             fc = (
                 f"{vconv};"
-                f"[1:a]aresample=48000[a0];[2:a]aresample=48000[a1];"
+                f"[1:a]aresample=48000:async=1000:first_pts=0[a0];[2:a]aresample=48000:async=1000:first_pts=0[a1];"
                 f"[a0][a1]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0[aout]"
             )
             cmd += [
@@ -419,7 +419,7 @@ def _build_cmd(ff, single_output_path=None):
                 *venc, "-c:a", "aac", "-b:a", _abr,
             ]
         elif num_aud == 1:
-            fc = f"{vconv};[1:a]aresample=48000[aout]"
+            fc = f"{vconv};[1:a]aresample=48000:async=1000:first_pts=0[aout]"
             cmd += [
                 "-filter_complex", fc,
                 "-map", "[vout]", "-map", "[aout]",
@@ -441,7 +441,7 @@ def _build_cmd(ff, single_output_path=None):
         if num_aud == 2:
             fc = (
                 f"{vconv};"
-                f"[0:a]aresample=48000[a0];[1:a]aresample=48000[a1];"
+                f"[0:a]aresample=48000:async=1000:first_pts=0[a0];[1:a]aresample=48000:async=1000:first_pts=0[a1];"
                 f"[a0][a1]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0[aout]"
             )
             cmd += [
@@ -450,7 +450,7 @@ def _build_cmd(ff, single_output_path=None):
                 *venc, "-c:a", "aac", "-b:a", _abr,
             ]
         elif num_aud == 1:
-            fc = f"{vconv};[0:a]aresample=48000[aout]"
+            fc = f"{vconv};[0:a]aresample=48000:async=1000:first_pts=0[aout]"
             cmd += [
                 "-filter_complex", fc,
                 "-map", "[vout]", "-map", "[aout]",

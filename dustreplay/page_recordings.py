@@ -203,14 +203,28 @@ class RecordingsPage(ctk.CTkFrame):
         ctk.CTkButton(
             r,
             text="✂️ Trim",
-            width=60,
+            width=54,
             height=30,
             fg_color=theme.BTN_DARK,
             hover_color=theme.ACCENT_HOVER,
             corner_radius=8,
             command=lambda: ClipEditor(self, fp, self.refresh),
-        ).place(relx=1.0, rely=0.5, anchor="e", x=-212)
+        ).place(relx=1.0, rely=0.5, anchor="e", x=-206)
+        ctk.CTkButton(
+            r,
+            text="🔍",
+            width=36,
+            height=30,
+            fg_color=theme.BTN_DARK,
+            hover_color=theme.ACCENT_HOVER,
+            corner_radius=8,
+            command=lambda: self._open_analysis(fp),
+        ).place(relx=1.0, rely=0.5, anchor="e", x=-266)
         return r
+
+    def _open_analysis(self, fp: str):
+        from clip_analyzer import ClipAnalysisModal
+        ClipAnalysisModal(self, fp)
 
     def _open_folder(self):
         if self.app and hasattr(self.app, "close_panel"):
