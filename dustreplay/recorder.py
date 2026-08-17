@@ -348,7 +348,7 @@ def _build_cmd(ff, single_output_path=None):
             "-probesize", "32M",
             "-analyzeduration", "0",
             "-f", "lavfi",
-            "-i", f"ddagrab=output_idx={dda_idx}:draw_mouse={draw_mouse}:framerate={fps}",
+            "-i", f"ddagrab=output_idx={dda_idx}:draw_mouse={draw_mouse}:framerate={fps},hwdownload,format=bgra",
         ]
     else:
         logger.info("Capture backend: gdigrab (GDI capture)")
