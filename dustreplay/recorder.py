@@ -328,20 +328,19 @@ def _build_cmd(ff, single_output_path=None):
         else:
             logger.warning("Configured mic '%s' not found in dshow input list", mic)
 
-    # System audio capture setup (WASAPI loopback via wasapi_loopback.exe pipe)
+    # System audio capture setup
     added_sys = False
     wasapi_exe = resolve_wasapi_exe()
     if sys_dev != "(No system audio)":
-        if wasapi_exe:
-            audio_in.append(
-                ["-thread_queue_size", "8192",
-                 "-use_wallclock_as_timestamps", "1",   # v4.0: monotonic clock sync
-                 "-f", "f32le", "-ar", "48000", "-ac", "2", "-i", "pipe:0"]
-            )
-            added_sys = True
-            logger.info("System audio: native WASAPI loopback via wasapi_loopback.exe (pipe:0)")
-        elif sys_dev and sys_dev not in (WASAPI_OUT, ""):
+        # 1. User selected a specific audio device (e.g. Voicemeeter, Speakers, Realtek)
+        if sys_dev and sys_dev not in (WASAPI_OUT, ""):
             matched_sys = next((d for d in dshow_devs if sys_dev.lower() in d.lower() or d.lower() in sys_dev.lower()), None)
+            if not matched_sys and dshow_devs:
+                for part in sys_dev.split():
+                    if len(part) >= 4 and part.lower() not in ("mikrofon", "microphone", "mic"):
+                        matched_sys = next((d for d in dshow_devs if part.lower() in d.lower()), None)
+                        if matched_sys:
+                            break
             if matched_sys:
                 audio_in.append(
                     ["-thread_queue_size", "4096", "-f", "dshow", "-i", f"audio={matched_sys}"]
@@ -349,15 +348,28 @@ def _build_cmd(ff, single_output_path=None):
                 added_sys = True
                 logger.info("System audio matched user selection: dshow '%s'", matched_sys)
 
-    if not added_sys and sys_dev != "(No system audio)":
-        _dshow_sys = _find_dshow_sys_audio(ff, exclude_mic=mic)
-        if _dshow_sys:
+        # 2. Find DirectShow system-audio candidate (Voicemeeter, Stereo Mix, Virtual Audio Cable)
+        if not added_sys:
+            _dshow_sys = _find_dshow_sys_audio(ff, exclude_mic=mic)
+            if _dshow_sys:
+                audio_in.append(
+                    ["-thread_queue_size", "4096", "-f", "dshow", "-i", f"audio={_dshow_sys}"]
+                )
+                added_sys = True
+                logger.info("System audio matched candidate: dshow '%s'", _dshow_sys)
+
+        # 3. WASAPI loopback via wasapi_loopback.exe pipe
+        if not added_sys and wasapi_exe:
             audio_in.append(
-                ["-thread_queue_size", "4096", "-f", "dshow", "-i", f"audio={_dshow_sys}"]
+                ["-thread_queue_size", "8192",
+                 "-use_wallclock_as_timestamps", "1",
+                 "-f", "f32le", "-ar", "48000", "-ac", "2", "-i", "pipe:0"]
             )
             added_sys = True
-            logger.info("System audio fallback: dshow '%s'", _dshow_sys)
-        elif dshow_devs:
+            logger.info("System audio: native WASAPI loopback via wasapi_loopback.exe (pipe:0)")
+
+        # 4. Fallback to any remaining non-mic DirectShow audio device
+        if not added_sys and dshow_devs:
             dev_to_use = next((d for d in dshow_devs if d != mic), dshow_devs[0])
             audio_in.append(
                 ["-thread_queue_size", "4096", "-f", "dshow", "-i", f"audio={dev_to_use}"]

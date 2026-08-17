@@ -1,29 +1,28 @@
 """DustReplay — Clip Analysis Engine & Diagnostics UI.
 
-Analyzes recorded MP4 clips for video FPS stability, audio tracks, volume dB levels,
-A/V synchronization, and generates diagnosis reports for user and debugging.
+Analyzes recorded MP4 clips using ffmpeg.exe (no ffprobe.exe required).
+Measures video FPS, resolution, audio presence, volume dB levels, and sync.
 """
 
 import json
 import logging
 import os
+import re
 import subprocess
 import threading
 import customtkinter as ctk
 import config
 import theme
-import i18n
 
 logger = logging.getLogger(__name__)
 
 
 def run_clip_diagnostics(video_path: str) -> dict:
-    """Analyze video file using ffprobe and ffmpeg volumedetect."""
+    """Analyze video file using ffmpeg.exe (no ffprobe dependency)."""
     if not os.path.isfile(video_path):
-        return {"error": f"File not found: {video_path}"}
+        return {"error": f"Dosya bulunamadı: {video_path}"}
 
     ff = config.resolve_ffmpeg_exe() or "ffmpeg"
-    ffprobe = os.path.join(os.path.dirname(ff), "ffprobe.exe") if os.path.isfile(os.path.join(os.path.dirname(ff), "ffprobe.exe")) else "ffprobe"
 
     result = {
         "file_name": os.path.basename(video_path),
@@ -36,67 +35,66 @@ def run_clip_diagnostics(video_path: str) -> dict:
         "healthy": True,
     }
 
-    # 1. ffprobe analysis
+    # 1. Parse ffmpeg -i info
     try:
         r = subprocess.run(
-            [
-                ffprobe, "-v", "error",
-                "-show_streams", "-show_format",
-                "-of", "json",
-                video_path,
-            ],
+            [ff, "-hide_banner", "-i", video_path],
             capture_output=True,
             text=True,
             timeout=15,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
-        data = json.loads(r.stdout)
-        fmt = data.get("format", {})
-        result["duration"] = round(float(fmt.get("duration", 0)), 2)
-        result["bitrate_kbps"] = int(float(fmt.get("bit_rate", 0)) / 1000) if fmt.get("bit_rate") else 0
+        info_text = r.stderr or r.stdout or ""
 
-        streams = data.get("streams", [])
-        v_stream = next((s for s in streams if s.get("codec_type") == "video"), None)
-        a_stream = next((s for s in streams if s.get("codec_type") == "audio"), None)
+        # Duration match: Duration: 00:01:23.45, start: 0.000000, bitrate: 1234 kb/s
+        dur_m = re.search(r"Duration:\s*(\d+):(\d+):([\d\.]+)", info_text)
+        if dur_m:
+            h, m, s = float(dur_m.group(1)), float(dur_m.group(2)), float(dur_m.group(3))
+            result["duration"] = round(h * 3600 + m * 60 + s, 2)
 
-        if v_stream:
-            fps_raw = v_stream.get("avg_frame_rate", "0/1").split("/")
-            fps = float(fps_raw[0]) / float(fps_raw[1]) if len(fps_raw) == 2 and float(fps_raw[1]) != 0 else 0
-            v_start = float(v_stream.get("start_time", 0))
+        bitrate_m = re.search(r"bitrate:\s*(\d+)\s*kb/s", info_text)
+        if bitrate_m:
+            result["bitrate_kbps"] = int(bitrate_m.group(1))
+
+        # Video stream match: Stream #0:0: Video: h264 (...), yuv420p(...), 1920x1080 [...], 60 fps
+        v_m = re.search(r"Stream #\d+:\d+.*?: Video:\s*([^\,\s]+).*?(\d{3,4})x(\d{3,4}).*?([\d\.]+)\s*fps", info_text)
+        if not v_m:
+            v_m = re.search(r"Stream #\d+:\d+.*?: Video:\s*([^\,\s]+).*?(\d{3,4})x(\d{3,4})", info_text)
+
+        if v_m:
+            codec = v_m.group(1)
+            w = int(v_m.group(2))
+            h = int(v_m.group(3))
+            fps = float(v_m.group(4)) if len(v_m.groups()) >= 4 and v_m.group(4) else 60.0
             result["video"] = {
-                "codec": v_stream.get("codec_name", "unknown"),
-                "width": v_stream.get("width", 0),
-                "height": v_stream.get("height", 0),
-                "fps": round(fps, 1),
-                "start_time": v_start,
+                "codec": codec,
+                "width": w,
+                "height": h,
+                "fps": fps,
             }
         else:
             result["video"] = None
             result["diagnosis"].append("❌ Video akışı bulunamadı.")
             result["healthy"] = False
 
-        if a_stream:
-            a_start = float(a_stream.get("start_time", 0))
+        # Audio stream match: Stream #0:1: Audio: aac (...), 48000 Hz, stereo, fltp, 128 kb/s
+        a_m = re.search(r"Stream #\d+:\d+.*?: Audio:\s*([^\,\s]+).*?(\d+)\s*Hz.*?(stereo|mono|\d+\s*channels|\d+\.\d+)", info_text, re.IGNORECASE)
+        if a_m:
+            acodec = a_m.group(1)
+            sr = a_m.group(2)
+            ch = a_m.group(3)
             result["audio"] = {
-                "codec": a_stream.get("codec_name", "unknown"),
-                "sample_rate": a_stream.get("sample_rate", "unknown"),
-                "channels": a_stream.get("channels", 0),
-                "channel_layout": a_stream.get("channel_layout", "unknown"),
-                "start_time": a_start,
+                "codec": acodec,
+                "sample_rate": sr,
+                "channels": ch,
             }
-            if v_stream:
-                offset = abs(v_start - a_start) * 1000
-                result["sync_offset_ms"] = round(offset, 1)
-                if offset > 150:
-                    result["diagnosis"].append(f"⚠️ Ses-Görüntü senkron kayması: {offset:.1f} ms")
-                    result["healthy"] = False
         else:
             result["audio"] = None
-            result["diagnosis"].append("❌ Ses akışı yok (Sessiz / Audio yakalanamadı).")
+            result["diagnosis"].append("❌ Ses akışı yok (Sessiz / Audio kaydedilmedi).")
             result["healthy"] = False
 
     except Exception as e:
-        result["error"] = f"ffprobe hatası: {e}"
+        result["error"] = f"ffmpeg inceleme hatası: {e}"
         return result
 
     # 2. Volume analysis
@@ -125,21 +123,21 @@ def run_clip_diagnostics(video_path: str) -> dict:
             result["audio"]["mean_volume"] = mean_vol
             result["audio"]["max_volume"] = max_vol
 
-            if "-91" in max_vol or "-90" in max_vol:
-                result["diagnosis"].append("⚠️ Ses parçası mevcut ancak tamamen SESSİZ (0 dB dalga boyu).")
+            if "-91" in max_vol or "-90" in max_vol or "-0.0 dB" == mean_vol:
+                result["diagnosis"].append("⚠️ Ses akışı var ancak tamamen SESSİZ (0 dB sinyal).")
                 result["healthy"] = False
             else:
-                result["diagnosis"].append(f"✓ Ses aktif ve duyulabilir seviyede (Maksimum: {max_vol}).")
+                result["diagnosis"].append(f"✓ Ses duyulabilir ve net (Maks: {max_vol}, Ort: {mean_vol}).")
         except Exception as e:
             result["audio"]["volume_err"] = str(e)
 
-    if v_stream and result["video"]["fps"] > 0:
-        result["diagnosis"].append(f"✓ Video akıcı kaydedilmiş ({result['video']['fps']} FPS, {result['video']['width']}x{result['video']['height']}).")
+    if result.get("video") and result["video"]["fps"] > 0:
+        result["diagnosis"].append(f"✓ Video akıcı ({result['video']['fps']} FPS, {result['video']['width']}x{result['video']['height']}).")
 
     if not result["diagnosis"]:
-        result["diagnosis"].append("✓ Kayıt kusursuz görünüyor.")
+        result["diagnosis"].append("✓ Kayıt kusursuz.")
 
-    # Write report file to APPDATA for persistence
+    # Write report file to APPDATA
     try:
         report_file = os.path.join(config.APPDATA_DIR, "last_clip_diagnosis.json")
         with open(report_file, "w", encoding="utf-8") as f:
@@ -163,7 +161,6 @@ class ClipAnalysisModal(ctk.CTkToplevel):
         self.attributes("-topmost", True)
         self.grab_set()
 
-        # Title
         hdr = ctk.CTkFrame(self, fg_color=theme.HEADER_BG, height=50, corner_radius=0)
         hdr.pack(fill="x")
         ctk.CTkLabel(
@@ -259,7 +256,7 @@ class ClipAnalysisModal(ctk.CTkToplevel):
         a_card.pack(fill="x", padx=4, pady=4)
         ctk.CTkLabel(
             a_card,
-            text="🔊 Ses Akışı (WASAPI / Mikrofon)",
+            text="🔊 Ses Akışı (Sistem Sesi / Mikrofon)",
             font=ctk.CTkFont(size=12, weight="bold"),
             text_color=theme.ACCENT,
             anchor="w",
@@ -267,7 +264,7 @@ class ClipAnalysisModal(ctk.CTkToplevel):
         a = diag.get("audio")
         if a:
             vol_str = f"Maksimum: {a.get('max_volume', 'N/A')}  |  Ortalama: {a.get('mean_volume', 'N/A')}"
-            a_text = f"Codec: {a['codec'].upper()} ({a['sample_rate']} Hz, {a['channels']} Kanal)\nSes Seviyesi: {vol_str}\nA/V Senkron Kayması: {diag['sync_offset_ms']} ms"
+            a_text = f"Codec: {a['codec'].upper()} ({a['sample_rate']} Hz, {a['channels']})\nSes Seviyesi: {vol_str}"
         else:
             a_text = "❌ Ses akışı yok (Sistem sesi veya mikrofon kaydedilemedi)."
         ctk.CTkLabel(
