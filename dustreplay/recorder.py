@@ -341,98 +341,62 @@ def _build_cmd(ff, single_output_path=None):
     _flipx = _capture_flip_suffix()
     _abr = _audio_br()
 
-    if backend == "gdigrab":
-        logger.info("Capture backend: gdigrab (all displays / device input)")
+    if backend == "ddagrab":
+        logger.info("Capture backend: ddagrab (DXGI Desktop Duplication)")
+        cmd += [
+            "-thread_queue_size", "4096",
+            "-probesize", "32M",
+            "-analyzeduration", "0",
+            "-f", "lavfi",
+            "-i", f"ddagrab=output_idx={dda_idx}:draw_mouse={draw_mouse}:framerate={fps}",
+        ]
+    else:
+        logger.info("Capture backend: gdigrab (GDI capture)")
         if capture_monitors == "all":
             geo = get_all_monitors_geometry()
-            cmd += [
-                "-thread_queue_size", "4096",
-                "-probesize", "32M",
-                "-analyzeduration", "0",
-                "-f", "gdigrab",
-                "-framerate", fps,
-                "-draw_mouse", str(draw_mouse),
-                "-offset_x", str(geo[0]),
-                "-offset_y", str(geo[1]),
-                "-video_size", f"{geo[2]}x{geo[3]}",
-                "-i", "desktop",
-            ]
         else:
             geo = get_monitor_geometry(mon_idx)
-            cmd += [
-                "-thread_queue_size", "4096",
-                "-probesize", "32M",
-                "-analyzeduration", "0",
-                "-f", "gdigrab",
-                "-framerate", fps,
-                "-draw_mouse", str(draw_mouse),
-                "-offset_x", str(geo[0]),
-                "-offset_y", str(geo[1]),
-                "-video_size", f"{geo[2]}x{geo[3]}",
-                "-i", "desktop",
-            ]
+        cmd += [
+            "-thread_queue_size", "4096",
+            "-probesize", "32M",
+            "-analyzeduration", "0",
+            "-f", "gdigrab",
+            "-framerate", fps,
+            "-draw_mouse", str(draw_mouse),
+            "-offset_x", str(geo[0]),
+            "-offset_y", str(geo[1]),
+            "-video_size", f"{geo[2]}x{geo[3]}",
+            "-i", "desktop",
+        ]
 
-        for ai in audio_in:
-            cmd += ai
+    for ai in audio_in:
+        cmd += ai
 
-        vconv = f"[0:v]fps={fps},{_scale}{_flipx},format=yuv420p[vout]"
-        num_aud = len(audio_in)
-        if num_aud == 2:
-            fc = (
-                f"{vconv};"
-                f"[1:a]aresample=48000:async=1:first_pts=0[a0];[2:a]aresample=48000:async=1:first_pts=0[a1];"
-                f"[a0][a1]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0,volume=2.5[aout]"
-            )
-            cmd += [
-                "-filter_complex", fc,
-                "-map", "[vout]", "-map", "[aout]",
-                "-r", fps,
-                *venc, "-c:a", "aac", "-b:a", _abr,
-            ]
-        elif num_aud == 1:
-            fc = f"{vconv};[1:a]aresample=48000:async=1:first_pts=0,volume=2.5[aout]"
-            cmd += [
-                "-filter_complex", fc,
-                "-map", "[vout]", "-map", "[aout]",
-                "-r", fps,
-                *venc, "-c:a", "aac", "-b:a", _abr,
-            ]
-        else:
-            fc = vconv
-            cmd += ["-filter_complex", fc, "-map", "[vout]", "-r", fps, *venc]
-
+    vconv = f"[0:v]fps={fps},{_scale}{_flipx},format=yuv420p[vout]"
+    num_aud = len(audio_in)
+    if num_aud == 2:
+        fc = (
+            f"{vconv};"
+            f"[1:a]aresample=48000:async=1:first_pts=0[a0];[2:a]aresample=48000:async=1:first_pts=0[a1];"
+            f"[a0][a1]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0,volume=2.5[aout]"
+        )
+        cmd += [
+            "-filter_complex", fc,
+            "-map", "[vout]", "-map", "[aout]",
+            "-r", fps,
+            *venc, "-c:a", "aac", "-b:a", _abr,
+        ]
+    elif num_aud == 1:
+        fc = f"{vconv};[1:a]aresample=48000:async=1:first_pts=0,volume=2.5[aout]"
+        cmd += [
+            "-filter_complex", fc,
+            "-map", "[vout]", "-map", "[aout]",
+            "-r", fps,
+            *venc, "-c:a", "aac", "-b:a", _abr,
+        ]
     else:
-        logger.info("Capture backend: ddagrab (lavfi GPU capture)")
-        for ai in audio_in:
-            cmd += ai
-
-        dda_src = f"ddagrab=output_idx={dda_idx}:draw_mouse={draw_mouse}:framerate={fps},hwdownload,format=bgra,fps={fps}"
-        vconv = f"{dda_src},{_scale}{_flipx},format=yuv420p[vout]"
-
-        num_aud = len(audio_in)
-        if num_aud == 2:
-            fc = (
-                f"{vconv};"
-                f"[0:a]aresample=48000:async=1:first_pts=0[a0];[1:a]aresample=48000:async=1:first_pts=0[a1];"
-                f"[a0][a1]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0,volume=2.5[aout]"
-            )
-            cmd += [
-                "-filter_complex", fc,
-                "-map", "[vout]", "-map", "[aout]",
-                "-r", fps,
-                *venc, "-c:a", "aac", "-b:a", _abr,
-            ]
-        elif num_aud == 1:
-            fc = f"{vconv};[0:a]aresample=48000:async=1:first_pts=0,volume=2.5[aout]"
-            cmd += [
-                "-filter_complex", fc,
-                "-map", "[vout]", "-map", "[aout]",
-                "-r", fps,
-                *venc, "-c:a", "aac", "-b:a", _abr,
-            ]
-        else:
-            fc = vconv
-            cmd += ["-filter_complex", fc, "-map", "[vout]", "-r", fps, *venc]
+        fc = vconv
+        cmd += ["-filter_complex", fc, "-map", "[vout]", "-r", fps, *venc]
 
     if single_output_path:
         cmd += ["-movflags", "+faststart", single_output_path]
