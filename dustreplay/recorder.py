@@ -316,27 +316,24 @@ def _build_cmd(ff, single_output_path=None):
             )
             logger.info("Microphone input attached: dshow '%s'", matched_mic_name)
 
+    wasapi_exe = resolve_wasapi_exe()
     if sys_dev and sys_dev != "(No system audio)":
-        matched_sys_name = None
-        if sys_dev == WASAPI_OUT or sys_dev.lower().startswith("[windows"):
+        if wasapi_exe:
+            audio_in.append(
+                ["-thread_queue_size", "8192",
+                 "-use_wallclock_as_timestamps", "1",
+                 "-f", "s16le", "-ar", "48000", "-ac", "2", "-i", "pipe:0"]
+            )
+            logger.info("System audio input attached: WASAPI loopback (s16le pipe:0)")
+        else:
             matched_sys_name = _find_dshow_sys_audio(ff, exclude_mic=matched_mic_name or "")
-            if not matched_sys_name:
-                matched_sys_name = next((d for d in dshow_devs if d != matched_mic_name and any(k in d.lower() for k in ("voicemeeter", "stereo mix", "mix", "cable", "speaker", "hoparlör", "audio", "out"))), None)
             if not matched_sys_name and dshow_devs:
                 matched_sys_name = next((d for d in dshow_devs if d != matched_mic_name), None)
-        else:
-            matched_sys_name = next((d for d in dshow_devs if sys_dev.lower() in d.lower() or d.lower() in sys_dev.lower()), None)
-            if not matched_sys_name and dshow_devs:
-                for part in sys_dev.split():
-                    if len(part) >= 4 and part.lower() not in ("mikrofon", "microphone", "mic"):
-                        matched_sys_name = next((d for d in dshow_devs if part.lower() in d.lower()), None)
-                        if matched_sys_name:
-                            break
-        if matched_sys_name:
-            audio_in.append(
-                ["-thread_queue_size", "4096", "-f", "dshow", "-i", f"audio={matched_sys_name}"]
-            )
-            logger.info("System audio input attached: dshow '%s'", matched_sys_name)
+            if matched_sys_name:
+                audio_in.append(
+                    ["-thread_queue_size", "4096", "-f", "dshow", "-i", f"audio={matched_sys_name}"]
+                )
+                logger.info("System audio input attached: dshow fallback '%s'", matched_sys_name)
 
     cmd = [ff, "-y"]
 
@@ -565,10 +562,33 @@ class Recorder:
     def _launch(self):
         _kill_stale_ffmpeg()
         self.reset_buffer()
+        if hasattr(self, "_wasapi_proc") and self._wasapi_proc:
+            try:
+                self._wasapi_proc.kill()
+            except Exception:
+                pass
+            self._wasapi_proc = None
 
         ff = get_ffmpeg_path()
         cmd = _build_cmd(ff, single_output_path=None)
         logger.info("ffmpeg cmd: %s", " ".join(cmd))
+
+        stdin_src = subprocess.PIPE
+        wasapi_exe = resolve_wasapi_exe()
+        if "pipe:0" in cmd and wasapi_exe:
+            try:
+                self._wasapi_proc = subprocess.Popen(
+                    [wasapi_exe],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL,
+                    creationflags=subprocess.CREATE_NO_WINDOW,
+                )
+                stdin_src = self._wasapi_proc.stdout
+                logger.info("Started WASAPI Loopback process PID=%s", self._wasapi_proc.pid)
+            except Exception as _e:
+                logger.warning("Could not start WASAPI Loopback process: %s", _e)
+                self._wasapi_proc = None
+
         try:
             stderr_log = open(
                 os.path.join(config.APPDATA_DIR, "ffmpeg_stderr.log"),
@@ -578,7 +598,7 @@ class Recorder:
             stderr_log = subprocess.DEVNULL
         self.process = subprocess.Popen(
             cmd,
-            stdin=subprocess.PIPE,
+            stdin=stdin_src,
             stdout=subprocess.DEVNULL,
             stderr=stderr_log,
             creationflags=subprocess.CREATE_NO_WINDOW | 0x00004000,

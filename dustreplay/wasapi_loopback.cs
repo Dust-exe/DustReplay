@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -63,8 +64,8 @@ class WasapiLoopback
 
     const int TARGET_SAMPLE_RATE = 48000;
     const int TARGET_CHANNELS = 2;
-    const int TARGET_BYTES_PER_SAMPLE = 4; // 32-bit float
-    const int TARGET_BLOCK_ALIGN = TARGET_CHANNELS * TARGET_BYTES_PER_SAMPLE; // 8 bytes per stereo frame
+    const int TARGET_BYTES_PER_SAMPLE = 2; // 16-bit PCM
+    const int TARGET_BLOCK_ALIGN = TARGET_CHANNELS * TARGET_BYTES_PER_SAMPLE; // 4 bytes per stereo frame
 
     [STAThread]
     static void Main(string[] args)
@@ -77,12 +78,12 @@ class WasapiLoopback
             int hr = enumerator.GetDefaultAudioEndpoint(0, 1, out device);
             if (hr != 0 || device == null)
             {
-                // Fallback to eConsole = 0
                 hr = enumerator.GetDefaultAudioEndpoint(0, 0, out device);
             }
             if (hr != 0 || device == null)
             {
                 Console.Error.WriteLine("GetDefaultAudioEndpoint failed hr: 0x" + hr.ToString("X"));
+                EmitContinuousSilence();
                 return;
             }
 
@@ -92,6 +93,7 @@ class WasapiLoopback
             if (hr != 0 || audioClientObj == null)
             {
                 Console.Error.WriteLine("Activate failed hr: 0x" + hr.ToString("X"));
+                EmitContinuousSilence();
                 return;
             }
             IAudioClient audioClient = (IAudioClient)audioClientObj;
@@ -101,6 +103,7 @@ class WasapiLoopback
             if (hr != 0 || mixFormatPtr == IntPtr.Zero)
             {
                 Console.Error.WriteLine("GetMixFormat failed hr: 0x" + hr.ToString("X"));
+                EmitContinuousSilence();
                 return;
             }
             WAVEFORMATEX wf = (WAVEFORMATEX)Marshal.PtrToStructure(mixFormatPtr, typeof(WAVEFORMATEX));
@@ -113,6 +116,7 @@ class WasapiLoopback
             if (hr != 0)
             {
                 Console.Error.WriteLine("Initialize failed hr: 0x" + hr.ToString("X"));
+                EmitContinuousSilence();
                 return;
             }
 
@@ -122,6 +126,7 @@ class WasapiLoopback
             if (hr != 0 || captureClientObj == null)
             {
                 Console.Error.WriteLine("GetService failed hr: 0x" + hr.ToString("X"));
+                EmitContinuousSilence();
                 return;
             }
             IAudioCaptureClient captureClient = (IAudioCaptureClient)captureClientObj;
@@ -140,33 +145,54 @@ class WasapiLoopback
                 ulong devPos;
                 ulong qpcPos;
 
+                Stopwatch sw = Stopwatch.StartNew();
+                long totalFramesSent = 0;
+
                 while (true)
                 {
                     captureClient.GetNextPacketSize(out packetSize);
-                    if (packetSize == 0)
-                    {
-                        Thread.Sleep(3);
-                        continue;
-                    }
 
-                    while (packetSize > 0)
+                    if (packetSize > 0)
                     {
-                        hr = captureClient.GetBuffer(out pData, out numFrames, out flags, out devPos, out qpcPos);
-                        if (hr == 0 && numFrames > 0)
+                        while (packetSize > 0)
                         {
-                            bool silent = (flags & 1) != 0 || (flags & 2) != 0 || pData == IntPtr.Zero;
-                            byte[] converted = ConvertToStandardStereoFloat48k(pData, (int)numFrames, inChannels, inSampleRate, inBitsPerSample, silent);
-                            if (converted != null && converted.Length > 0)
+                            hr = captureClient.GetBuffer(out pData, out numFrames, out flags, out devPos, out qpcPos);
+                            if (hr == 0 && numFrames > 0)
                             {
-                                stdout.Write(converted, 0, converted.Length);
+                                bool silent = (flags & 1) != 0 || (flags & 2) != 0 || pData == IntPtr.Zero;
+                                byte[] converted = ConvertToStandardStereoPCM16(pData, (int)numFrames, inChannels, inSampleRate, inBitsPerSample, silent);
+                                if (converted != null && converted.Length > 0)
+                                {
+                                    stdout.Write(converted, 0, converted.Length);
+                                    totalFramesSent += (converted.Length / TARGET_BLOCK_ALIGN);
+                                }
+                                captureClient.ReleaseBuffer(numFrames);
                             }
-                            captureClient.ReleaseBuffer(numFrames);
+                            else
+                            {
+                                break;
+                            }
+                            captureClient.GetNextPacketSize(out packetSize);
+                        }
+                    }
+                    else
+                    {
+                        // Fill silence to keep exact clock pace if no audio packet available
+                        double elapsedSec = sw.Elapsed.TotalSeconds;
+                        long expectedFrames = (long)(elapsedSec * TARGET_SAMPLE_RATE);
+                        long missingFrames = expectedFrames - totalFramesSent;
+
+                        if (missingFrames > 480) // 10ms behind
+                        {
+                            int fillFrames = (int)Math.Min(missingFrames, 4800);
+                            byte[] silence = new byte[fillFrames * TARGET_BLOCK_ALIGN];
+                            stdout.Write(silence, 0, silence.Length);
+                            totalFramesSent += fillFrames;
                         }
                         else
                         {
-                            break;
+                            Thread.Sleep(5);
                         }
-                        captureClient.GetNextPacketSize(out packetSize);
                     }
                 }
             }
@@ -174,10 +200,11 @@ class WasapiLoopback
         catch (Exception ex)
         {
             Console.Error.WriteLine("WASAPI Loopback fatal: " + ex.Message);
+            EmitContinuousSilence();
         }
     }
 
-    static byte[] ConvertToStandardStereoFloat48k(IntPtr pData, int numFrames, int inChannels, int inSampleRate, int inBitsPerSample, bool silent)
+    static byte[] ConvertToStandardStereoPCM16(IntPtr pData, int numFrames, int inChannels, int inSampleRate, int inBitsPerSample, bool silent)
     {
         if (numFrames <= 0) return null;
 
@@ -265,8 +292,34 @@ class WasapiLoopback
             }
         }
 
+        // Convert float array [-1.0 .. 1.0] to 16-bit PCM integer byte array
         byte[] result = new byte[outFrames * TARGET_BLOCK_ALIGN];
-        Buffer.BlockCopy(outSamples, 0, result, 0, result.Length);
+        int outIdx = 0;
+        for (int i = 0; i < outFrames * 2; i++)
+        {
+            float f = Math.Max(-1.0f, Math.Min(1.0f, outSamples[i]));
+            short s = (short)(f * 32767.0f);
+            result[outIdx + 0] = (byte)(s & 0xFF);
+            result[outIdx + 1] = (byte)((s >> 8) & 0xFF);
+            outIdx += 2;
+        }
         return result;
+    }
+
+    static void EmitContinuousSilence()
+    {
+        try
+        {
+            using (Stream stdout = Console.OpenStandardOutput())
+            {
+                byte[] chunk = new byte[480 * TARGET_BLOCK_ALIGN]; // 10ms of 16-bit PCM silence
+                while (true)
+                {
+                    stdout.Write(chunk, 0, chunk.Length);
+                    Thread.Sleep(10);
+                }
+            }
+        }
+        catch { }
     }
 }

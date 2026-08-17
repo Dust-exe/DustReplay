@@ -116,20 +116,19 @@ def use_nvenc(ff_path: str) -> bool:
 def video_encode_args(encoder: str, cq: str, fps: int = 60) -> list[str]:
     """ffmpeg arguments for H.264 video only (no audio).
 
-    ShadowPlay-tier NVENC settings for near-zero GPU overhead.
+    High-quality, low-latency NVENC settings for smooth 60fps recording.
     """
     if encoder == ENC_NVENC:
         return [
             "-c:v", "h264_nvenc",
-            "-preset", "p1",            # fastest hardware preset
-            "-tune", "ull",             # ultra-low-latency
-            "-rc", "constqp",
-            "-qp", str(cq),
-            "-b:v", "0",               # pure QP mode, no CBR
+            "-preset", "p3",            # fast & stable hardware preset
+            "-tune", "ll",              # low-latency
+            "-rc", "vbr",
+            "-cq", str(cq),
+            "-b:v", "15M",              # 15 Mbps target bitrate for high quality 1080p60
+            "-maxrate", "25M",
+            "-bufsize", "30M",
             "-zerolatency", "1",
-            "-spatial-aq", "0",         # AQ off → less GPU overhead
-            "-temporal-aq", "0",
-            "-forced-idr", "1",         # clean IDR keyframes
             "-g", str(fps * 2),         # GOP = 2 seconds
         ]
     if encoder == ENC_AMF:
@@ -143,8 +142,8 @@ def video_encode_args(encoder: str, cq: str, fps: int = 60) -> list[str]:
         ]
     return [
         "-c:v", "libx264",
-        "-preset", "ultrafast",
-        "-tune", "zerolatency",
+        "-preset", "veryfast",
         "-crf", str(cq),
+        "-pix_fmt", "yuv420p",
         "-g", str(fps * 2),
     ]
