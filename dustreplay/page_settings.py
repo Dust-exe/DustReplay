@@ -147,6 +147,20 @@ class SettingsPage(ctk.CTkFrame):
         )
         self._btn_update_check.pack(pady=(12, 4), padx=14, fill="x")
 
+        self._btn_factory_reset = ctk.CTkButton(
+            s,
+            text=i18n.t("settings_reset_btn"),
+            height=36,
+            font=ctk.CTkFont(weight="bold"),
+            fg_color="#2A141A",
+            hover_color="#421E27",
+            border_width=1,
+            border_color="#C0392B",
+            text_color="#FF8A8A",
+            command=self._factory_reset,
+        )
+        self._btn_factory_reset.pack(pady=(4, 16), padx=14, fill="x")
+
         lang_fr = ctk.CTkFrame(self, fg_color=theme.PANEL, corner_radius=10)
         lang_fr.pack(fill="x", padx=16, pady=(10, 6))
         ctk.CTkLabel(
@@ -181,6 +195,30 @@ class SettingsPage(ctk.CTkFrame):
             corner_radius=12,
             command=self._save,
         ).pack(pady=(4, 16), padx=20, fill="x")
+
+    def _factory_reset(self):
+        import shutil
+        try:
+            sf = os.path.join(config.APPDATA_DIR, "settings.json")
+            slf = os.path.join(config.APPDATA_DIR, "settings.local.json")
+            if os.path.isfile(sf):
+                os.remove(sf)
+            if os.path.isfile(slf):
+                os.remove(slf)
+            if os.path.isdir(config.TEMP_DIR):
+                shutil.rmtree(config.TEMP_DIR, ignore_errors=True)
+                os.makedirs(config.TEMP_DIR, exist_ok=True)
+        except Exception:
+            pass
+        config.init()
+        self._rebuild()
+        self.after(200, self._load_audio_async)
+        if self.app:
+            self.app.on_settings_saved()
+            try:
+                self.app.show_toast(i18n.t("settings_reset_done"), kind="success")
+            except Exception:
+                pass
 
     def _on_check_updates(self):
         from updater import check_for_updates

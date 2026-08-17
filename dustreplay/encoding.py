@@ -121,13 +121,13 @@ def video_encode_args(encoder: str, cq: str, fps: int = 60) -> list[str]:
     if encoder == ENC_NVENC:
         return [
             "-c:v", "h264_nvenc",
-            "-preset", "p3",            # fast & stable hardware preset
-            "-tune", "ll",              # low-latency
-            "-rc", "vbr",
-            "-cq", str(cq),
-            "-b:v", "15M",              # 15 Mbps target bitrate for high quality 1080p60
-            "-maxrate", "25M",
-            "-bufsize", "30M",
+            "-preset", "p4",            # ShadowPlay standard preset (Fast / High Quality)
+            "-tune", "hq",              # High quality tuning
+            "-rc", "vbr",               # Dynamic VBR
+            "-cq", str(cq),             # CRF / CQ level (e.g. 18)
+            "-b:v", "20M",              # 20 Mbps target for crystal clear 1080p60
+            "-maxrate", "35M",          # 35 Mbps max peak
+            "-bufsize", "40M",
             "-zerolatency", "1",
             "-g", str(fps * 2),         # GOP = 2 seconds
         ]

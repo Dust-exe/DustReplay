@@ -172,6 +172,8 @@ _MSG = {
         "rec.res_1440": "1440p",
         "rec.res_1080": "1080p",
         "rec.res_720": "720p",
+        "settings_reset_btn": "🔄 Factory Reset / Clean Start",
+        "settings_reset_done": "All settings and temporary buffers reset to defaults.",
     },
     "tr": {
         "nav.home": "\U0001f3e0 Ana Sayfa",
@@ -342,6 +344,8 @@ _MSG = {
         "rec.res_1440": "1440p",
         "rec.res_1080": "1080p",
         "rec.res_720": "720p",
+        "settings_reset_btn": "🔄 Fabrika Ayarlarına Dön / Sıfır Kurulum",
+        "settings_reset_done": "Tüm ayarlar ve geçici tampon dosyaları fabrika ayarlarına sıfırlandı.",
     },
 }
 
