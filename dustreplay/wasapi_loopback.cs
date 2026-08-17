@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -64,8 +63,8 @@ class WasapiLoopback
 
     const int TARGET_SAMPLE_RATE = 48000;
     const int TARGET_CHANNELS = 2;
-    const int TARGET_BYTES_PER_SAMPLE = 4; // float32
-    const int TARGET_BLOCK_ALIGN = TARGET_CHANNELS * TARGET_BYTES_PER_SAMPLE; // 8 bytes per frame
+    const int TARGET_BYTES_PER_SAMPLE = 4; // 32-bit float
+    const int TARGET_BLOCK_ALIGN = TARGET_CHANNELS * TARGET_BYTES_PER_SAMPLE; // 8 bytes per stereo frame
 
     [STAThread]
     static void Main(string[] args)
@@ -74,12 +73,16 @@ class WasapiLoopback
         {
             IMMDeviceEnumerator enumerator = (IMMDeviceEnumerator)new MMDeviceEnumeratorComObject();
             IMMDevice device;
-            // eRender = 0, eConsole = 0
-            int hr = enumerator.GetDefaultAudioEndpoint(0, 0, out device);
+            // eRender = 0, eMultimedia = 1 (primary audio output)
+            int hr = enumerator.GetDefaultAudioEndpoint(0, 1, out device);
+            if (hr != 0 || device == null)
+            {
+                // Fallback to eConsole = 0
+                hr = enumerator.GetDefaultAudioEndpoint(0, 0, out device);
+            }
             if (hr != 0 || device == null)
             {
                 Console.Error.WriteLine("GetDefaultAudioEndpoint failed hr: 0x" + hr.ToString("X"));
-                EmitContinuousSilence();
                 return;
             }
 
@@ -89,7 +92,6 @@ class WasapiLoopback
             if (hr != 0 || audioClientObj == null)
             {
                 Console.Error.WriteLine("Activate failed hr: 0x" + hr.ToString("X"));
-                EmitContinuousSilence();
                 return;
             }
             IAudioClient audioClient = (IAudioClient)audioClientObj;
@@ -99,7 +101,6 @@ class WasapiLoopback
             if (hr != 0 || mixFormatPtr == IntPtr.Zero)
             {
                 Console.Error.WriteLine("GetMixFormat failed hr: 0x" + hr.ToString("X"));
-                EmitContinuousSilence();
                 return;
             }
             WAVEFORMATEX wf = (WAVEFORMATEX)Marshal.PtrToStructure(mixFormatPtr, typeof(WAVEFORMATEX));
@@ -112,7 +113,6 @@ class WasapiLoopback
             if (hr != 0)
             {
                 Console.Error.WriteLine("Initialize failed hr: 0x" + hr.ToString("X"));
-                EmitContinuousSilence();
                 return;
             }
 
@@ -122,7 +122,6 @@ class WasapiLoopback
             if (hr != 0 || captureClientObj == null)
             {
                 Console.Error.WriteLine("GetService failed hr: 0x" + hr.ToString("X"));
-                EmitContinuousSilence();
                 return;
             }
             IAudioCaptureClient captureClient = (IAudioCaptureClient)captureClientObj;
@@ -130,7 +129,6 @@ class WasapiLoopback
             int inChannels = wf.nChannels > 0 ? (int)wf.nChannels : 2;
             int inSampleRate = wf.nSamplesPerSec > 0 ? (int)wf.nSamplesPerSec : 48000;
             int inBitsPerSample = wf.wBitsPerSample > 0 ? (int)wf.wBitsPerSample : 32;
-            bool isFloat = (wf.wFormatTag == 3) || (inBitsPerSample == 32);
 
             using (Stream stdout = Console.OpenStandardOutput())
             {
@@ -142,26 +140,25 @@ class WasapiLoopback
                 ulong devPos;
                 ulong qpcPos;
 
-                Stopwatch sw = Stopwatch.StartNew();
-                long totalFramesSent = 0;
-
                 while (true)
                 {
                     captureClient.GetNextPacketSize(out packetSize);
-                    bool hadAudio = false;
+                    if (packetSize == 0)
+                    {
+                        Thread.Sleep(3);
+                        continue;
+                    }
 
                     while (packetSize > 0)
                     {
                         hr = captureClient.GetBuffer(out pData, out numFrames, out flags, out devPos, out qpcPos);
                         if (hr == 0 && numFrames > 0)
                         {
-                            bool silent = (flags & 1) != 0 || pData == IntPtr.Zero;
-                            byte[] converted = ConvertToStandardStereoFloat48k(pData, (int)numFrames, inChannels, inSampleRate, inBitsPerSample, isFloat, silent);
+                            bool silent = (flags & 1) != 0 || (flags & 2) != 0 || pData == IntPtr.Zero;
+                            byte[] converted = ConvertToStandardStereoFloat48k(pData, (int)numFrames, inChannels, inSampleRate, inBitsPerSample, silent);
                             if (converted != null && converted.Length > 0)
                             {
                                 stdout.Write(converted, 0, converted.Length);
-                                totalFramesSent += (converted.Length / TARGET_BLOCK_ALIGN);
-                                hadAudio = true;
                             }
                             captureClient.ReleaseBuffer(numFrames);
                         }
@@ -171,39 +168,19 @@ class WasapiLoopback
                         }
                         captureClient.GetNextPacketSize(out packetSize);
                     }
-
-                    // Keep clock sync: if device produces no audio packet, output silence frames to match real elapsed time
-                    double elapsedSec = sw.Elapsed.TotalSeconds;
-                    long expectedFrames = (long)(elapsedSec * TARGET_SAMPLE_RATE);
-                    long missingFrames = expectedFrames - totalFramesSent;
-
-                    if (missingFrames > 240) // more than 5ms behind
-                    {
-                        int sendSilenceFrames = (int)Math.Min(missingFrames, 4800); // max 100ms per loop
-                        byte[] silence = new byte[sendSilenceFrames * TARGET_BLOCK_ALIGN];
-                        stdout.Write(silence, 0, silence.Length);
-                        totalFramesSent += sendSilenceFrames;
-                    }
-
-                    if (!hadAudio)
-                    {
-                        Thread.Sleep(5);
-                    }
                 }
             }
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine("WASAPI Loopback fatal: " + ex.Message);
-            EmitContinuousSilence();
         }
     }
 
-    static byte[] ConvertToStandardStereoFloat48k(IntPtr pData, int numFrames, int inChannels, int inSampleRate, int inBitsPerSample, bool isFloat, bool silent)
+    static byte[] ConvertToStandardStereoFloat48k(IntPtr pData, int numFrames, int inChannels, int inSampleRate, int inBitsPerSample, bool silent)
     {
         if (numFrames <= 0) return null;
 
-        // Extract input samples to float array [-1.0f .. 1.0f]
         float[] inSamples = new float[numFrames * inChannels];
         if (!silent && pData != IntPtr.Zero)
         {
@@ -215,7 +192,7 @@ class WasapiLoopback
             int idx = 0;
             for (int i = 0; i < numFrames * inChannels; i++)
             {
-                if (isFloat && bytesPerSample == 4)
+                if (bytesPerSample == 4) // Standard Windows WASAPI mix format is ALWAYS 32-bit float
                 {
                     inSamples[i] = BitConverter.ToSingle(rawBytes, idx);
                 }
@@ -228,11 +205,6 @@ class WasapiLoopback
                 {
                     int s = (rawBytes[idx + 0]) | (rawBytes[idx + 1] << 8) | ((sbyte)rawBytes[idx + 2] << 16);
                     inSamples[i] = s / 8388608.0f;
-                }
-                else if (bytesPerSample == 4) // 32-bit int PCM
-                {
-                    int s = BitConverter.ToInt32(rawBytes, idx);
-                    inSamples[i] = s / 2147483648.0f;
                 }
                 idx += bytesPerSample;
             }
@@ -255,7 +227,6 @@ class WasapiLoopback
             }
             else
             {
-                // Multi-channel (5.1 / 7.1): mix front-left and front-right + center
                 float left = inSamples[i * inChannels + 0];
                 float right = inSamples[i * inChannels + 1];
                 if (inChannels >= 3)
@@ -269,7 +240,7 @@ class WasapiLoopback
             }
         }
 
-        // Sample rate conversion if not 48kHz (simple linear resample)
+        // Sample rate conversion to 48kHz
         float[] outSamples;
         int outFrames;
         if (inSampleRate == TARGET_SAMPLE_RATE)
@@ -294,26 +265,8 @@ class WasapiLoopback
             }
         }
 
-        // Convert float array to bytes
         byte[] result = new byte[outFrames * TARGET_BLOCK_ALIGN];
         Buffer.BlockCopy(outSamples, 0, result, 0, result.Length);
         return result;
-    }
-
-    static void EmitContinuousSilence()
-    {
-        try
-        {
-            using (Stream stdout = Console.OpenStandardOutput())
-            {
-                byte[] chunk = new byte[480 * TARGET_BLOCK_ALIGN]; // 10ms of silence
-                while (true)
-                {
-                    stdout.Write(chunk, 0, chunk.Length);
-                    Thread.Sleep(10);
-                }
-            }
-        }
-        catch { }
     }
 }
